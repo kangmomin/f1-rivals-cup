@@ -11,7 +11,6 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import DashboardPage from './pages/admin/DashboardPage'
 import UsersPage from './pages/admin/UsersPage'
-import AdminLeaguesPage from './pages/admin/LeaguesPage'
 import AdminLeagueDetailPage from './pages/admin/LeagueDetailPage'
 import MatchesPage from './pages/admin/MatchesPage'
 import SettingsPage from './pages/admin/SettingsPage'
@@ -193,7 +192,6 @@ function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="users" element={<UsersPage />} />
-            <Route path="leagues" element={<AdminLeaguesPage />} />
             <Route path="leagues/:id" element={<AdminLeagueDetailPage />} />
             <Route path="matches" element={<MatchesPage />} />
             <Route path="settings" element={<SettingsPage />} />
