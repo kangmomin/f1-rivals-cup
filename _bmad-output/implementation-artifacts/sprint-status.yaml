@@ -1,0 +1,110 @@
+# generated: 2026-01-10
+# project: f1 rivals cup
+# project_key: f1-rivals-cup
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-01-10
+project: f1 rivals cup
+project_key: f1-rivals-cup
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: 프로젝트 기반 및 기본 인증 (4 stories)
+  epic-1: in-progress
+  1-1-project-initial-setup: in-progress
+  1-2-database-schema-sqlc-setup: backlog
+  1-3-register-api: backlog
+  1-4-login-api: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: 세션 관리 및 프로필 (6 stories)
+  epic-2: backlog
+  2-1-token-refresh-api: backlog
+  2-2-logout-api: backlog
+  2-3-profile-read-api: backlog
+  2-4-profile-update-api: backlog
+  2-5-password-change-api: backlog
+  2-6-account-withdrawal-api: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: 계정 복구 (3 stories) - Phase 2 연기 가능
+  epic-3: backlog
+  3-1-find-email-api: backlog
+  3-2-password-reset-request-api: backlog
+  3-3-password-reset-confirm-api: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: 접근 제어 시스템 (6 stories)
+  epic-4: backlog
+  4-1-jwt-auth-middleware: backlog
+  4-2-permission-code-management: backlog
+  4-3-role-based-access-control-middleware: backlog
+  4-4-permission-based-access-control-middleware: backlog
+  4-5-admin-wildcard-permission: backlog
+  4-6-standard-error-response-format: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: ADMIN 유저 관리 (8 stories)
+  epic-5: backlog
+  5-1-user-list-api: backlog
+  5-2-user-search-api: backlog
+  5-3-user-filter-sort-api: backlog
+  5-4-user-detail-api: backlog
+  5-5-role-change-api: backlog
+  5-6-permission-management-api: backlog
+  5-7-account-status-management-api: backlog
+  5-8-user-delete-api-soft-delete: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: 감사 및 히스토리 (5 stories)
+  epic-6: backlog
+  6-1-permission-history-auto-record: backlog
+  6-2-history-read-api: backlog
+  6-3-history-sort-paging: backlog
+  6-4-optimistic-locking: backlog
+  6-5-history-retention-policy: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: 사용자 인터페이스 및 경험 (9 stories)
+  epic-7: backlog
+  7-1-frontend-base-design-system: backlog
+  7-2-auth-page-ui: backlog
+  7-3-auth-state-protected-route: backlog
+  7-4-admin-user-list-page: backlog
+  7-5-role-change-ui: backlog
+  7-6-permission-editor-ui: backlog
+  7-7-history-view-ui: backlog
+  7-8-common-ui-components-feedback: backlog
+  7-9-accessibility-keyboard-navigation: backlog
+  epic-7-retrospective: optional
