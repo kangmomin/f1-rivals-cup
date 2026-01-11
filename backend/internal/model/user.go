@@ -12,6 +12,7 @@ type User struct {
 	Email                string     `json:"email"`
 	PasswordHash         string     `json:"-"`
 	Nickname             string     `json:"nickname"`
+	Role                 string     `json:"role"`
 	EmailVerified        bool       `json:"email_verified"`
 	EmailVerifyToken     *string    `json:"-"`
 	PasswordResetToken   *string    `json:"-"`

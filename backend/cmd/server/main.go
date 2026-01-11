@@ -90,6 +90,7 @@ func main() {
 	adminGroup.Use(custommiddleware.AuthMiddleware(jwtService))
 	adminGroup.GET("/users", adminHandler.ListUsers)
 	adminGroup.GET("/stats", adminHandler.GetUserStats)
+	adminGroup.PUT("/users/:id/role", adminHandler.UpdateUserRole)
 
 	// League routes (protected)
 	adminGroup.POST("/leagues", leagueHandler.Create)

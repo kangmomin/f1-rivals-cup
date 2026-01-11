@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminService } from '../../services/admin'
+import { User } from '../../services/auth'
 import { leagueService, League, CreateLeagueRequest, UpdateLeagueRequest } from '../../services/league'
 
 const STATUSES = [
@@ -23,6 +24,15 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress: 'bg-racing/10 text-racing',
   completed: 'bg-profit/10 text-profit',
   cancelled: 'bg-loss/10 text-loss',
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  user: '일반 유저',
+  admin: '관리자',
+}
+const ROLE_COLORS: Record<string, string> = {
+  user: 'bg-steel text-text-secondary',
+  admin: 'bg-racing/10 text-racing',
 }
 
 interface FormData extends CreateLeagueRequest {
@@ -49,10 +59,19 @@ export default function DashboardPage() {
   // League states
   const [leagues, setLeagues] = useState<League[]>([])
   const [totalLeagues, setTotalLeagues] = useState(0)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [leaguePage, setLeaguePage] = useState(1)
+  const [leagueTotalPages, setLeagueTotalPages] = useState(1)
   const [isLeaguesLoading, setIsLeaguesLoading] = useState(true)
   const [leagueError, setLeagueError] = useState<string | null>(null)
+
+  // User states
+  const [users, setUsers] = useState<User[]>([])
+  const [userPage, setUserPage] = useState(1)
+  const [userTotalPages, setUserTotalPages] = useState(1)
+  const [isUsersLoading, setIsUsersLoading] = useState(true)
+  const [userError, setUserError] = useState<string | null>(null)
+  const [userSearch, setUserSearch] = useState('')
+  const [userSearchInput, setUserSearchInput] = useState('')
 
   // Modal states
   const [showModal, setShowModal] = useState(false)
@@ -79,21 +98,40 @@ export default function DashboardPage() {
     setIsLeaguesLoading(true)
     setLeagueError(null)
     try {
-      const response = await leagueService.list(page, 10)
+      const response = await leagueService.list(leaguePage, 5)
       setLeagues(response.leagues)
       setTotalLeagues(response.total)
-      setTotalPages(response.total_pages)
+      setLeagueTotalPages(response.total_pages)
     } catch (err) {
       setLeagueError('리그 목록을 불러오는데 실패했습니다')
       console.error(err)
     } finally {
       setIsLeaguesLoading(false)
     }
-  }, [page])
+  }, [leaguePage])
+
+  const fetchUsers = useCallback(async () => {
+    setIsUsersLoading(true)
+    setUserError(null)
+    try {
+      const response = await adminService.listUsers(userPage, 10, userSearch)
+      setUsers(response.users)
+      setUserTotalPages(response.total_pages)
+    } catch (err) {
+      setUserError('유저 목록을 불러오는데 실패했습니다')
+      console.error(err)
+    } finally {
+      setIsUsersLoading(false)
+    }
+  }, [userPage, userSearch])
 
   useEffect(() => {
     fetchLeagues()
   }, [fetchLeagues])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
   const openCreateModal = () => {
     setEditingLeague(null)
@@ -171,7 +209,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteLeague = async (id: string) => {
     if (!confirm('정말로 이 리그를 삭제하시겠습니까?')) return
 
     try {
@@ -179,6 +217,28 @@ export default function DashboardPage() {
       fetchLeagues()
     } catch (err) {
       alert('리그 삭제에 실패했습니다')
+      console.error(err)
+    }
+  }
+
+  const handleUserSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setUserPage(1)
+    setUserSearch(userSearchInput)
+  }
+
+  const handleClearUserSearch = () => {
+    setUserSearchInput('')
+    setUserSearch('')
+    setUserPage(1)
+  }
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await adminService.updateUserRole(userId, newRole)
+      fetchUsers()
+    } catch (err) {
+      alert('권한 변경에 실패했습니다')
       console.error(err)
     }
   }
@@ -212,8 +272,8 @@ export default function DashboardPage() {
       </div>
 
       {/* League Management Section */}
-      <div className="bg-carbon-dark border border-steel rounded-lg">
-        <div className="px-4 py-3 border-b border-steel flex items-center justify-between">
+      <div className="bg-carbon-dark border border-steel rounded-lg max-h-[400px] flex flex-col">
+        <div className="px-4 py-3 border-b border-steel flex items-center justify-between flex-shrink-0">
           <h2 className="text-lg font-medium text-white">리그 관리</h2>
           <button onClick={openCreateModal} className="btn-primary text-sm">
             새 리그 생성
@@ -221,15 +281,15 @@ export default function DashboardPage() {
         </div>
 
         {leagueError && (
-          <div className="m-4 bg-loss/10 border border-loss rounded-md p-3 text-loss text-sm">
+          <div className="m-4 bg-loss/10 border border-loss rounded-md p-3 text-loss text-sm flex-shrink-0">
             {leagueError}
           </div>
         )}
 
         {/* Leagues Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-auto flex-1">
           <table className="w-full">
-            <thead>
+            <thead className="sticky top-0 bg-carbon-dark">
               <tr className="border-b border-steel">
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
                   리그명
@@ -251,13 +311,13 @@ export default function DashboardPage() {
             <tbody className="divide-y divide-steel">
               {isLeaguesLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-text-secondary">
+                  <td colSpan={5} className="px-4 py-8 text-center text-text-secondary">
                     로딩 중...
                   </td>
                 </tr>
               ) : leagues.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-text-secondary">
+                  <td colSpan={5} className="px-4 py-8 text-center text-text-secondary">
                     등록된 리그가 없습니다
                   </td>
                 </tr>
@@ -291,7 +351,7 @@ export default function DashboardPage() {
                         수정
                       </button>
                       <button
-                        onClick={() => handleDelete(league.id)}
+                        onClick={() => handleDeleteLeague(league.id)}
                         className="text-xs text-loss hover:text-loss/80 transition-colors"
                       >
                         삭제
@@ -305,21 +365,154 @@ export default function DashboardPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {leagueTotalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 p-3 border-t border-steel flex-shrink-0">
+            <button
+              onClick={() => setLeaguePage((p) => Math.max(1, p - 1))}
+              disabled={leaguePage === 1}
+              className="px-3 py-1 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+            >
+              이전
+            </button>
+            <span className="text-sm text-text-secondary">
+              {leaguePage} / {leagueTotalPages}
+            </span>
+            <button
+              onClick={() => setLeaguePage((p) => Math.min(leagueTotalPages, p + 1))}
+              disabled={leaguePage === leagueTotalPages}
+              className="px-3 py-1 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+            >
+              다음
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* User Management Section */}
+      <div className="bg-carbon-dark border border-steel rounded-lg">
+        <div className="px-4 py-3 border-b border-steel flex items-center justify-between">
+          <h2 className="text-lg font-medium text-white">유저 권한 관리</h2>
+        </div>
+
+        {/* Search */}
+        <div className="px-4 py-3 border-b border-steel">
+          <form onSubmit={handleUserSearch} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="이메일 또는 닉네임으로 검색..."
+              value={userSearchInput}
+              onChange={(e) => setUserSearchInput(e.target.value)}
+              className="input flex-1"
+            />
+            <button type="submit" className="btn-primary text-sm">
+              검색
+            </button>
+            {userSearch && (
+              <button
+                type="button"
+                onClick={handleClearUserSearch}
+                className="px-3 py-2 text-sm text-text-secondary hover:text-white transition-colors"
+              >
+                초기화
+              </button>
+            )}
+          </form>
+        </div>
+
+        {userError && (
+          <div className="m-4 bg-loss/10 border border-loss rounded-md p-3 text-loss text-sm">
+            {userError}
+          </div>
+        )}
+
+        {/* Users Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-steel">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                  유저
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                  이메일 인증
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                  가입일
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                  권한
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-steel">
+              {isUsersLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-text-secondary">
+                    로딩 중...
+                  </td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-text-secondary">
+                    {userSearch ? '검색 결과가 없습니다' : '등록된 유저가 없습니다'}
+                  </td>
+                </tr>
+              ) : (
+                users.map((user) => (
+                  <tr key={user.id} className="hover:bg-steel/20">
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-white">{user.nickname}</p>
+                        <p className="text-xs text-text-secondary">{user.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          user.email_verified
+                            ? 'bg-profit/10 text-profit'
+                            : 'bg-loss/10 text-loss'
+                        }`}
+                      >
+                        {user.email_verified ? '인증됨' : '미인증'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">
+                      {new Date(user.created_at).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={user.role || 'user'}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                        className={`text-xs font-medium px-2 py-1 rounded border-0 cursor-pointer ${ROLE_COLORS[user.role || 'user']}`}
+                      >
+                        <option value="user">일반 유저</option>
+                        <option value="admin">관리자</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {userTotalPages > 1 && (
           <div className="flex items-center justify-center gap-2 p-4 border-t border-steel">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
+              onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+              disabled={userPage === 1}
               className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
             >
               이전
             </button>
             <span className="text-sm text-text-secondary">
-              {page} / {totalPages}
+              {userPage} / {userTotalPages}
             </span>
             <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
+              onClick={() => setUserPage((p) => Math.min(userTotalPages, p + 1))}
+              disabled={userPage === userTotalPages}
               className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
             >
               다음
@@ -328,7 +521,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Create/Edit League Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-carbon-dark border border-steel rounded-lg w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">

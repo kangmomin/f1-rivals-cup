@@ -60,7 +60,7 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 // GetByID retrieves a user by ID
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	query := `
-		SELECT id, email, password_hash, nickname, email_verified,
+		SELECT id, email, password_hash, nickname, role, email_verified,
 		       email_verify_token, refresh_token, created_at, updated_at
 		FROM users
 		WHERE id = $1
@@ -72,6 +72,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 		&user.Email,
 		&user.PasswordHash,
 		&user.Nickname,
+		&user.Role,
 		&user.EmailVerified,
 		&user.EmailVerifyToken,
 		&user.RefreshToken,
@@ -92,7 +93,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 // GetByEmail retrieves a user by email
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `
-		SELECT id, email, password_hash, nickname, email_verified,
+		SELECT id, email, password_hash, nickname, role, email_verified,
 		       email_verify_token, refresh_token, created_at, updated_at
 		FROM users
 		WHERE email = $1
@@ -104,6 +105,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.U
 		&user.Email,
 		&user.PasswordHash,
 		&user.Nickname,
+		&user.Role,
 		&user.EmailVerified,
 		&user.EmailVerifyToken,
 		&user.RefreshToken,
@@ -224,7 +226,7 @@ func (r *UserRepository) ListUsers(ctx context.Context, page, limit int, search 
 
 	// Get users
 	query := `
-		SELECT id, email, nickname, email_verified, created_at, updated_at
+		SELECT id, email, nickname, role, email_verified, created_at, updated_at
 		FROM users
 		WHERE ($1 = '' OR email ILIKE '%' || $1 || '%' OR nickname ILIKE '%' || $1 || '%')
 		ORDER BY created_at DESC
@@ -244,6 +246,7 @@ func (r *UserRepository) ListUsers(ctx context.Context, page, limit int, search 
 			&user.ID,
 			&user.Email,
 			&user.Nickname,
+			&user.Role,
 			&user.EmailVerified,
 			&user.CreatedAt,
 			&user.UpdatedAt,
@@ -258,6 +261,13 @@ func (r *UserRepository) ListUsers(ctx context.Context, page, limit int, search 
 	}
 
 	return users, total, nil
+}
+
+// UpdateUserRole updates the user's role
+func (r *UserRepository) UpdateUserRole(ctx context.Context, userID uuid.UUID, role string) error {
+	query := `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.Pool.ExecContext(ctx, query, role, userID)
+	return err
 }
 
 // CountUsers returns the total number of users

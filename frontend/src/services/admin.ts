@@ -30,6 +30,11 @@ export const adminService = {
     const response = await api.get<AdminStats>('/admin/stats')
     return response.data
   },
+
+  async updateUserRole(userId: string, role: string): Promise<{ message: string }> {
+    const response = await api.put<{ message: string }>(`/admin/users/${userId}/role`, { role })
+    return response.data
+  },
 }
 
 export default adminService
