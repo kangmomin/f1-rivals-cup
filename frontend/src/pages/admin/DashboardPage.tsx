@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { adminService } from '../../services/admin'
-import { User } from '../../services/auth'
+import { adminService, PermissionInfo, PermissionHistory, RoleInfo } from '../../services/admin'
+import { User, UserRole } from '../../services/auth'
 import { leagueService, League, CreateLeagueRequest, UpdateLeagueRequest } from '../../services/league'
 
 const STATUSES = [
@@ -27,12 +27,14 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  user: '일반 유저',
-  admin: '관리자',
+  USER: '일반 유저',
+  STAFF: '스태프',
+  ADMIN: '관리자',
 }
 const ROLE_COLORS: Record<string, string> = {
-  user: 'bg-steel text-text-secondary',
-  admin: 'bg-racing/10 text-racing',
+  USER: 'bg-steel text-text-secondary',
+  STAFF: 'bg-neon/10 text-neon',
+  ADMIN: 'bg-racing/10 text-racing',
 }
 
 interface FormData extends CreateLeagueRequest {
@@ -54,6 +56,7 @@ const initialFormData: FormData = {
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [totalUsers, setTotalUsers] = useState(0)
+  const [usersByRole, setUsersByRole] = useState<Record<string, number>>({})
   const [isStatsLoading, setIsStatsLoading] = useState(true)
 
   // League states
@@ -72,8 +75,21 @@ export default function DashboardPage() {
   const [userError, setUserError] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
   const [userSearchInput, setUserSearchInput] = useState('')
+  const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
 
-  // Modal states
+  // Permission modal states
+  const [showPermissionModal, setShowPermissionModal] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [permissionsList, setPermissionsList] = useState<PermissionInfo[]>([])
+  const [rolesList, setRolesList] = useState<RoleInfo[]>([])
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
+  const [selectedRole, setSelectedRole] = useState<UserRole>('USER')
+  const [userHistory, setUserHistory] = useState<PermissionHistory[]>([])
+  const [isPermissionLoading, setIsPermissionLoading] = useState(false)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit')
+
+  // League modal states
   const [showModal, setShowModal] = useState(false)
   const [editingLeague, setEditingLeague] = useState<League | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -85,6 +101,7 @@ export default function DashboardPage() {
       try {
         const stats = await adminService.getStats()
         setTotalUsers(stats.total_users)
+        setUsersByRole(stats.users_by_role || {})
       } catch (err) {
         console.error('Failed to fetch stats:', err)
       } finally {
@@ -92,6 +109,19 @@ export default function DashboardPage() {
       }
     }
     fetchStats()
+  }, [])
+
+  useEffect(() => {
+    const fetchPermissionsList = async () => {
+      try {
+        const response = await adminService.getPermissionsList()
+        setPermissionsList(response.permissions)
+        setRolesList(response.roles)
+      } catch (err) {
+        console.error('Failed to fetch permissions list:', err)
+      }
+    }
+    fetchPermissionsList()
   }, [])
 
   const fetchLeagues = useCallback(async () => {
@@ -114,7 +144,7 @@ export default function DashboardPage() {
     setIsUsersLoading(true)
     setUserError(null)
     try {
-      const response = await adminService.listUsers(userPage, 10, userSearch)
+      const response = await adminService.listUsers(userPage, 10, userSearch, roleFilter || undefined)
       setUsers(response.users)
       setUserTotalPages(response.total_pages)
     } catch (err) {
@@ -123,7 +153,7 @@ export default function DashboardPage() {
     } finally {
       setIsUsersLoading(false)
     }
-  }, [userPage, userSearch])
+  }, [userPage, userSearch, roleFilter])
 
   useEffect(() => {
     fetchLeagues()
@@ -163,6 +193,32 @@ export default function DashboardPage() {
     setEditingLeague(null)
     setFormData(initialFormData)
     setFormError(null)
+  }
+
+  const openPermissionModal = async (user: User) => {
+    setSelectedUser(user)
+    setSelectedRole(user.role)
+    setSelectedPermissions(user.permissions || [])
+    setActiveTab('edit')
+    setPermissionError(null)
+    setShowPermissionModal(true)
+
+    // Fetch user history
+    try {
+      const historyResponse = await adminService.getUserPermissionHistory(user.id, 1, 10)
+      setUserHistory(historyResponse.history)
+    } catch (err) {
+      console.error('Failed to fetch user history:', err)
+      setUserHistory([])
+    }
+  }
+
+  const closePermissionModal = () => {
+    setShowPermissionModal(false)
+    setSelectedUser(null)
+    setSelectedPermissions([])
+    setUserHistory([])
+    setPermissionError(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -230,22 +286,68 @@ export default function DashboardPage() {
   const handleClearUserSearch = () => {
     setUserSearchInput('')
     setUserSearch('')
+    setRoleFilter('')
     setUserPage(1)
   }
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const handleSavePermissions = async () => {
+    if (!selectedUser) return
+
+    setIsPermissionLoading(true)
+    setPermissionError(null)
+
     try {
-      await adminService.updateUserRole(userId, newRole)
+      // Update role if changed
+      if (selectedRole !== selectedUser.role) {
+        const roleResult = await adminService.updateUserRole(selectedUser.id, selectedRole, selectedUser.version)
+        selectedUser.version = roleResult.new_version
+        selectedUser.role = selectedRole
+      }
+
+      // Update permissions if changed
+      const currentPerms = selectedUser.permissions || []
+      const permsChanged = JSON.stringify([...selectedPermissions].sort()) !== JSON.stringify([...currentPerms].sort())
+      if (permsChanged) {
+        await adminService.updateUserPermissions(selectedUser.id, selectedPermissions, selectedUser.version)
+      }
+
+      closePermissionModal()
       fetchUsers()
-    } catch (err) {
-      alert('권한 변경에 실패했습니다')
+
+      // Refresh stats
+      const stats = await adminService.getStats()
+      setTotalUsers(stats.total_users)
+      setUsersByRole(stats.users_by_role || {})
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } }
+      if (error?.response?.data?.error === 'version_conflict') {
+        setPermissionError('다른 관리자가 이 유저를 수정 중입니다. 새로고침 후 다시 시도해주세요.')
+      } else if (error?.response?.data?.error === 'last_admin') {
+        setPermissionError('마지막 관리자는 역할을 변경할 수 없습니다.')
+      } else {
+        setPermissionError('권한 변경에 실패했습니다')
+      }
       console.error(err)
+    } finally {
+      setIsPermissionLoading(false)
     }
+  }
+
+  const togglePermission = (permCode: string) => {
+    setSelectedPermissions((prev) =>
+      prev.includes(permCode)
+        ? prev.filter((p) => p !== permCode)
+        : [...prev, permCode]
+    )
   }
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-'
     return new Date(dateStr).toLocaleDateString('ko-KR')
+  }
+
+  const formatDateTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString('ko-KR')
   }
 
   const activeLeagues = leagues.filter(l => l.status === 'open' || l.status === 'in_progress').length
@@ -255,6 +357,23 @@ export default function DashboardPage() {
     { label: '활성 리그', value: isLeaguesLoading ? '-' : activeLeagues.toString() },
     { label: '전체 리그', value: isLeaguesLoading ? '-' : totalLeagues.toString() },
   ]
+
+  // Group permissions by category
+  const groupedPermissions = permissionsList.reduce((acc, perm) => {
+    if (!acc[perm.category]) {
+      acc[perm.category] = []
+    }
+    acc[perm.category].push(perm)
+    return acc
+  }, {} as Record<string, PermissionInfo[]>)
+
+  const categoryLabels: Record<string, string> = {
+    user: '유저 관리',
+    news: '뉴스',
+    fund: '자금',
+    match: '경기',
+    league: '리그',
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -270,6 +389,21 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Role Stats */}
+      {!isStatsLoading && Object.keys(usersByRole).length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          {['ADMIN', 'STAFF', 'USER'].map((role) => (
+            <div
+              key={role}
+              className="bg-carbon-dark border border-steel rounded-lg p-3"
+            >
+              <p className="text-xs text-text-secondary">{ROLE_LABELS[role]}</p>
+              <p className="text-lg font-bold text-white mt-1">{usersByRole[role] || 0}명</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* League Management Section */}
       <div className="bg-carbon-dark border border-steel rounded-lg max-h-[400px] flex flex-col">
@@ -394,20 +528,33 @@ export default function DashboardPage() {
           <h2 className="text-lg font-medium text-white">유저 권한 관리</h2>
         </div>
 
-        {/* Search */}
+        {/* Search & Filter */}
         <div className="px-4 py-3 border-b border-steel">
-          <form onSubmit={handleUserSearch} className="flex gap-2">
+          <form onSubmit={handleUserSearch} className="flex gap-2 flex-wrap">
             <input
               type="text"
               placeholder="이메일 또는 닉네임으로 검색..."
               value={userSearchInput}
               onChange={(e) => setUserSearchInput(e.target.value)}
-              className="input flex-1"
+              className="input flex-1 min-w-[200px]"
             />
+            <select
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value as UserRole | '')
+                setUserPage(1)
+              }}
+              className="input w-32"
+            >
+              <option value="">전체 역할</option>
+              <option value="USER">일반 유저</option>
+              <option value="STAFF">스태프</option>
+              <option value="ADMIN">관리자</option>
+            </select>
             <button type="submit" className="btn-primary text-sm">
               검색
             </button>
-            {userSearch && (
+            {(userSearch || roleFilter) && (
               <button
                 type="button"
                 onClick={handleClearUserSearch}
@@ -434,27 +581,30 @@ export default function DashboardPage() {
                   유저
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
-                  이메일 인증
+                  역할
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                  권한
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
                   가입일
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
-                  권한
+                <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">
+                  작업
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-steel">
               {isUsersLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-text-secondary">
+                  <td colSpan={5} className="px-4 py-8 text-center text-text-secondary">
                     로딩 중...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-text-secondary">
-                    {userSearch ? '검색 결과가 없습니다' : '등록된 유저가 없습니다'}
+                  <td colSpan={5} className="px-4 py-8 text-center text-text-secondary">
+                    {userSearch || roleFilter ? '검색 결과가 없습니다' : '등록된 유저가 없습니다'}
                   </td>
                 </tr>
               ) : (
@@ -467,28 +617,31 @@ export default function DashboardPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          user.email_verified
-                            ? 'bg-profit/10 text-profit'
-                            : 'bg-loss/10 text-loss'
-                        }`}
-                      >
-                        {user.email_verified ? '인증됨' : '미인증'}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[user.role] || ROLE_COLORS.USER}`}>
+                        {ROLE_LABELS[user.role] || '일반 유저'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {user.role === 'ADMIN' ? (
+                        <span className="text-xs text-racing">모든 권한</span>
+                      ) : user.permissions && user.permissions.length > 0 ? (
+                        <span className="text-xs text-text-secondary">
+                          {user.permissions.length}개 권한
+                        </span>
+                      ) : (
+                        <span className="text-xs text-text-secondary">-</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary">
                       {new Date(user.created_at).toLocaleDateString('ko-KR')}
                     </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={user.role || 'user'}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        className={`text-xs font-medium px-2 py-1 rounded border-0 cursor-pointer ${ROLE_COLORS[user.role || 'user']}`}
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => openPermissionModal(user)}
+                        className="text-xs text-neon hover:text-neon-light transition-colors"
                       >
-                        <option value="user">일반 유저</option>
-                        <option value="admin">관리자</option>
-                      </select>
+                        권한 편집
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -520,6 +673,209 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Permission Edit Modal */}
+      {showPermissionModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-carbon-dark border border-steel rounded-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-steel flex items-center justify-between flex-shrink-0">
+              <div>
+                <h3 className="text-lg font-medium text-white">
+                  유저 권한 관리
+                </h3>
+                <p className="text-sm text-text-secondary mt-1">
+                  {selectedUser.nickname} ({selectedUser.email})
+                </p>
+              </div>
+              <button
+                onClick={closePermissionModal}
+                className="text-text-secondary hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-steel flex-shrink-0">
+              <button
+                onClick={() => setActiveTab('edit')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'edit'
+                    ? 'text-neon border-b-2 border-neon'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                권한 편집
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeTab === 'history'
+                    ? 'text-neon border-b-2 border-neon'
+                    : 'text-text-secondary hover:text-white'
+                }`}
+              >
+                변경 기록
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {permissionError && (
+                <div className="mb-4 bg-loss/10 border border-loss rounded-md p-3 text-loss text-sm">
+                  {permissionError}
+                </div>
+              )}
+
+              {activeTab === 'edit' ? (
+                <div className="space-y-6">
+                  {/* Role Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-3">
+                      역할 (Role)
+                    </label>
+                    <div className="flex gap-2">
+                      {rolesList.map((role) => (
+                        <button
+                          key={role.code}
+                          onClick={() => setSelectedRole(role.code as UserRole)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            selectedRole === role.code
+                              ? 'bg-neon text-carbon'
+                              : 'bg-steel/30 text-text-secondary hover:bg-steel/50'
+                          }`}
+                        >
+                          {role.name}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-text-secondary mt-2">
+                      {rolesList.find((r) => r.code === selectedRole)?.description}
+                    </p>
+                  </div>
+
+                  {/* Permissions (only for STAFF role) */}
+                  {selectedRole === 'STAFF' && (
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-3">
+                        권한 (Permissions)
+                      </label>
+                      <div className="space-y-4">
+                        {Object.entries(groupedPermissions).map(([category, perms]) => (
+                          <div key={category} className="bg-steel/20 rounded-lg p-4">
+                            <h4 className="text-sm font-medium text-white mb-3">
+                              {categoryLabels[category] || category}
+                            </h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              {perms.map((perm) => (
+                                <label
+                                  key={perm.code}
+                                  className="flex items-start gap-2 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPermissions.includes(perm.code)}
+                                    onChange={() => togglePermission(perm.code)}
+                                    className="mt-1"
+                                  />
+                                  <div>
+                                    <p className="text-sm text-white">{perm.name}</p>
+                                    <p className="text-xs text-text-secondary">{perm.description}</p>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRole === 'ADMIN' && (
+                    <div className="bg-racing/10 border border-racing/30 rounded-lg p-4">
+                      <p className="text-sm text-racing">
+                        관리자(ADMIN)는 모든 권한을 자동으로 보유합니다.
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedRole === 'USER' && (
+                    <div className="bg-steel/20 rounded-lg p-4">
+                      <p className="text-sm text-text-secondary">
+                        일반 유저(USER)는 관리자 기능에 접근할 수 없습니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userHistory.length === 0 ? (
+                    <p className="text-center text-text-secondary py-8">
+                      변경 기록이 없습니다
+                    </p>
+                  ) : (
+                    userHistory.map((history) => (
+                      <div
+                        key={history.id}
+                        className="bg-steel/20 rounded-lg p-4"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            history.change_type === 'ROLE'
+                              ? 'bg-racing/10 text-racing'
+                              : 'bg-neon/10 text-neon'
+                          }`}>
+                            {history.change_type === 'ROLE' ? '역할 변경' : '권한 변경'}
+                          </span>
+                          <span className="text-xs text-text-secondary">
+                            {formatDateTime(history.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-text-secondary mb-1">
+                          변경자: <span className="text-white">{history.changer_nickname}</span>
+                        </p>
+                        {history.change_type === 'ROLE' ? (
+                          <p className="text-sm">
+                            <span className="text-loss">{ROLE_LABELS[history.old_value as string] || history.old_value}</span>
+                            {' → '}
+                            <span className="text-profit">{ROLE_LABELS[history.new_value as string] || history.new_value}</span>
+                          </p>
+                        ) : (
+                          <div className="text-sm">
+                            <p className="text-text-secondary">
+                              이전: {Array.isArray(history.old_value) ? (history.old_value.length > 0 ? history.old_value.join(', ') : '없음') : '-'}
+                            </p>
+                            <p className="text-text-secondary">
+                              이후: {Array.isArray(history.new_value) ? (history.new_value.length > 0 ? history.new_value.join(', ') : '없음') : '-'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {activeTab === 'edit' && (
+              <div className="px-6 py-4 border-t border-steel flex justify-end gap-3 flex-shrink-0">
+                <button
+                  onClick={closePermissionModal}
+                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSavePermissions}
+                  disabled={isPermissionLoading}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  {isPermissionLoading ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Create/Edit League Modal */}
       {showModal && (

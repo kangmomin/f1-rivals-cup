@@ -13,6 +13,8 @@ type User struct {
 	PasswordHash         string     `json:"-"`
 	Nickname             string     `json:"nickname"`
 	Role                 string     `json:"role"`
+	Permissions          []string   `json:"permissions"`
+	Version              int        `json:"-"` // For optimistic locking
 	EmailVerified        bool       `json:"email_verified"`
 	EmailVerifyToken     *string    `json:"-"`
 	PasswordResetToken   *string    `json:"-"`
@@ -20,6 +22,45 @@ type User struct {
 	RefreshToken         *string    `json:"-"`
 	CreatedAt            time.Time  `json:"created_at"`
 	UpdatedAt            time.Time  `json:"updated_at"`
+}
+
+// PermissionHistory represents a permission change record
+type PermissionHistory struct {
+	ID         uuid.UUID `json:"id"`
+	ChangerID  uuid.UUID `json:"changer_id"`
+	TargetID   uuid.UUID `json:"target_id"`
+	ChangeType string    `json:"change_type"` // ROLE or PERMISSION
+	OldValue   any       `json:"old_value"`
+	NewValue   any       `json:"new_value"`
+	CreatedAt  time.Time `json:"created_at"`
+	// Joined fields
+	ChangerNickname string `json:"changer_nickname,omitempty"`
+	TargetNickname  string `json:"target_nickname,omitempty"`
+}
+
+// UpdateRoleRequest represents a request to update user role
+type UpdateRoleRequest struct {
+	Role    string `json:"role" validate:"required,oneof=USER STAFF ADMIN"`
+	Version int    `json:"version" validate:"required"`
+}
+
+// UpdatePermissionsRequest represents a request to update user permissions
+type UpdatePermissionsRequest struct {
+	Permissions []string `json:"permissions" validate:"required"`
+	Version     int      `json:"version" validate:"required"`
+}
+
+// PermissionErrorResponse represents an error response with permission details
+type PermissionErrorResponse struct {
+	Error struct {
+		Code               string   `json:"code"`
+		Message            string   `json:"message"`
+		RequiredPermission string   `json:"required_permission,omitempty"`
+		Details            *struct {
+			UserRole        string   `json:"user_role"`
+			UserPermissions []string `json:"user_permissions"`
+		} `json:"details,omitempty"`
+	} `json:"error"`
 }
 
 // RegisterRequest represents a user registration request

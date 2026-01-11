@@ -1,10 +1,14 @@
 import api from './api'
 
+export type UserRole = 'USER' | 'STAFF' | 'ADMIN'
+
 export interface User {
   id: string
   email: string
   nickname: string
-  role: string
+  role: UserRole
+  permissions: string[]
+  version: number
   email_verified: boolean
   created_at: string
   updated_at: string

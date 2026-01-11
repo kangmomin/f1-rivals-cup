@@ -260,7 +260,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	}
 
 	// Generate new tokens
-	accessToken, err := h.jwtService.GenerateAccessToken(user.ID, user.Email, user.Nickname)
+	accessToken, err := h.jwtService.GenerateAccessToken(user.ID, user.Email, user.Nickname, user.Role, user.Permissions)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
@@ -335,7 +335,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	}
 
 	// Generate tokens
-	accessToken, err := h.jwtService.GenerateAccessToken(user.ID, user.Email, user.Nickname)
+	accessToken, err := h.jwtService.GenerateAccessToken(user.ID, user.Email, user.Nickname, user.Role, user.Permissions)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",

@@ -38,6 +38,7 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	permissionHistoryRepo := repository.NewPermissionHistoryRepository(db)
 	leagueRepo := repository.NewLeagueRepository(db)
 	participantRepo := repository.NewParticipantRepository(db)
 	matchRepo := repository.NewMatchRepository(db)
@@ -50,7 +51,7 @@ func main() {
 	// Initialize handlers
 	healthHandler := handler.NewHealthHandler()
 	authHandler := handler.NewAuthHandler(userRepo, jwtService)
-	adminHandler := handler.NewAdminHandler(userRepo)
+	adminHandler := handler.NewAdminHandler(userRepo, permissionHistoryRepo)
 	leagueHandler := handler.NewLeagueHandler(leagueRepo)
 	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo)
 	matchHandler := handler.NewMatchHandler(matchRepo, leagueRepo)
@@ -85,12 +86,22 @@ func main() {
 	authGroup.POST("/password-reset", authHandler.RequestPasswordReset)
 	authGroup.POST("/password-reset/confirm", authHandler.ConfirmPasswordReset)
 
-	// Admin routes (protected)
+	// Admin routes (protected - require STAFF or ADMIN role)
 	adminGroup := v1.Group("/admin")
 	adminGroup.Use(custommiddleware.AuthMiddleware(jwtService))
-	adminGroup.GET("/users", adminHandler.ListUsers)
-	adminGroup.GET("/stats", adminHandler.GetUserStats)
-	adminGroup.PUT("/users/:id/role", adminHandler.UpdateUserRole)
+	adminGroup.Use(custommiddleware.RequireRole(auth.RoleStaff, auth.RoleAdmin))
+
+	// User management routes
+	adminGroup.GET("/users", adminHandler.ListUsers, custommiddleware.RequirePermission(auth.PermUserView))
+	adminGroup.GET("/users/:id", adminHandler.GetUser, custommiddleware.RequirePermission(auth.PermUserView))
+	adminGroup.GET("/users/:id/history", adminHandler.GetUserPermissionHistory, custommiddleware.RequirePermission(auth.PermUserView))
+	adminGroup.PUT("/users/:id/role", adminHandler.UpdateUserRole, custommiddleware.RequirePermission(auth.PermUserRoleChange))
+	adminGroup.PUT("/users/:id/permissions", adminHandler.UpdateUserPermissions, custommiddleware.RequirePermission(auth.PermUserPermissionEdit))
+
+	// Permission meta info
+	adminGroup.GET("/permissions", adminHandler.GetPermissionsList, custommiddleware.RequirePermission(auth.PermUserView))
+	adminGroup.GET("/permission-history", adminHandler.GetRecentPermissionHistory, custommiddleware.RequirePermission(auth.PermUserView))
+	adminGroup.GET("/stats", adminHandler.GetUserStats, custommiddleware.RequirePermission(auth.PermUserView))
 
 	// League routes (protected)
 	adminGroup.POST("/leagues", leagueHandler.Create)
