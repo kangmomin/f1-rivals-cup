@@ -1,0 +1,4 @@
+ALTER TABLE leagues
+DROP COLUMN IF EXISTS rules,
+DROP COLUMN IF EXISTS settings,
+DROP COLUMN IF EXISTS contact_info;

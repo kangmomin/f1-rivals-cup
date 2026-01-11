@@ -1,0 +1,2 @@
+ALTER TABLE leagues
+DROP COLUMN IF EXISTS match_time;

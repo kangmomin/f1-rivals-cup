@@ -1,0 +1,10 @@
+ALTER TABLE leagues
+DROP COLUMN IF EXISTS game_type,
+DROP COLUMN IF EXISTS platform,
+DROP COLUMN IF EXISTS max_teams,
+DROP COLUMN IF EXISTS rules,
+DROP COLUMN IF EXISTS prize_info,
+DROP COLUMN IF EXISTS logo_url,
+DROP COLUMN IF EXISTS banner_url,
+DROP COLUMN IF EXISTS registration_start,
+DROP COLUMN IF EXISTS registration_end;
