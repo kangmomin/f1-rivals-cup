@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,6 +81,7 @@ func (h *CommentHandler) Create(c echo.Context) error {
 				Message: "뉴스를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Comment.Create: failed to create comment", "error", err, "news_id", newsID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "댓글 작성에 실패했습니다",
@@ -121,6 +123,7 @@ func (h *CommentHandler) List(c echo.Context) error {
 
 	comments, total, err := h.commentRepo.ListByNews(ctx, newsID, page, limit)
 	if err != nil {
+		slog.Error("Comment.List: failed to list comments", "error", err, "news_id", newsID, "page", page, "limit", limit)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "댓글 목록을 불러오는데 실패했습니다",
@@ -193,6 +196,7 @@ func (h *CommentHandler) Update(c echo.Context) error {
 				Message: "댓글을 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Comment.Update: failed to get comment", "error", err, "comment_id", commentID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "댓글을 불러오는데 실패했습니다",
@@ -210,6 +214,7 @@ func (h *CommentHandler) Update(c echo.Context) error {
 	// Update comment
 	comment.Content = req.Content
 	if err := h.commentRepo.Update(ctx, comment); err != nil {
+		slog.Error("Comment.Update: failed to update comment", "error", err, "comment_id", commentID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "댓글 수정에 실패했습니다",
@@ -250,6 +255,7 @@ func (h *CommentHandler) Delete(c echo.Context) error {
 				Message: "댓글을 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Comment.Delete: failed to get comment", "error", err, "comment_id", commentID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "댓글을 불러오는데 실패했습니다",
@@ -266,6 +272,7 @@ func (h *CommentHandler) Delete(c echo.Context) error {
 
 	// Delete comment
 	if err := h.commentRepo.Delete(ctx, commentID); err != nil {
+		slog.Error("Comment.Delete: failed to delete comment", "error", err, "comment_id", commentID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "댓글 삭제에 실패했습니다",

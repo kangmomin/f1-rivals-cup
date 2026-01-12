@@ -143,6 +143,10 @@ func main() {
 	adminGroup.DELETE("/teams/:id", teamHandler.Delete)
 
 	// Admin news routes (protected with permissions)
+	// AI generate endpoint with rate limiting (10 req/min, burst 5)
+	adminGroup.POST("/news/generate", newsHandler.GenerateContent,
+		custommiddleware.RateLimitMiddleware(custommiddleware.AIRateLimiter),
+		custommiddleware.RequirePermission(auth.PermNewsCreate))
 	adminGroup.GET("/leagues/:id/news", newsHandler.ListAll)
 	adminGroup.GET("/news/:id", newsHandler.GetAdmin)
 	adminGroup.POST("/leagues/:id/news", newsHandler.Create, custommiddleware.RequirePermission(auth.PermNewsCreate))
@@ -150,7 +154,6 @@ func main() {
 	adminGroup.PUT("/news/:id/publish", newsHandler.Publish, custommiddleware.RequirePermission(auth.PermNewsPublish))
 	adminGroup.PUT("/news/:id/unpublish", newsHandler.Unpublish, custommiddleware.RequirePermission(auth.PermNewsPublish))
 	adminGroup.DELETE("/news/:id", newsHandler.Delete, custommiddleware.RequirePermission(auth.PermNewsDelete))
-	adminGroup.POST("/news/generate", newsHandler.GenerateContent, custommiddleware.RequirePermission(auth.PermNewsCreate))
 
 	// Public league routes
 	leagueGroup := v1.Group("/leagues")

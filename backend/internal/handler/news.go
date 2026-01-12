@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -76,6 +78,7 @@ func (h *NewsHandler) Create(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.Create: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그를 불러오는데 실패했습니다",
@@ -91,6 +94,7 @@ func (h *NewsHandler) Create(c echo.Context) error {
 	}
 
 	if err := h.newsRepo.Create(ctx, news); err != nil {
+		slog.Error("News.Create: failed to create news", "error", err, "league_id", leagueID, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스 작성에 실패했습니다",
@@ -136,6 +140,7 @@ func (h *NewsHandler) List(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.List: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그를 불러오는데 실패했습니다",
@@ -145,6 +150,7 @@ func (h *NewsHandler) List(c echo.Context) error {
 	// Public endpoint shows only published news
 	newsList, total, err := h.newsRepo.ListByLeague(ctx, leagueID, page, limit, true)
 	if err != nil {
+		slog.Error("News.List: failed to list news", "error", err, "league_id", leagueID, "page", page, "limit", limit)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스 목록을 불러오는데 실패했습니다",
@@ -198,6 +204,7 @@ func (h *NewsHandler) ListAll(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.ListAll: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그를 불러오는데 실패했습니다",
@@ -207,6 +214,7 @@ func (h *NewsHandler) ListAll(c echo.Context) error {
 	// Admin endpoint shows all news (including unpublished)
 	newsList, total, err := h.newsRepo.ListByLeague(ctx, leagueID, page, limit, false)
 	if err != nil {
+		slog.Error("News.ListAll: failed to list news", "error", err, "league_id", leagueID, "page", page, "limit", limit)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스 목록을 불러오는데 실패했습니다",
@@ -249,6 +257,7 @@ func (h *NewsHandler) Get(c echo.Context) error {
 				Message: "뉴스를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.Get: failed to get news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스를 불러오는데 실패했습니다",
@@ -287,6 +296,7 @@ func (h *NewsHandler) GetAdmin(c echo.Context) error {
 				Message: "뉴스를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.GetAdmin: failed to get news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스를 불러오는데 실패했습니다",
@@ -326,6 +336,7 @@ func (h *NewsHandler) Update(c echo.Context) error {
 				Message: "뉴스를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.Update: failed to get news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스를 불러오는데 실패했습니다",
@@ -360,6 +371,7 @@ func (h *NewsHandler) Update(c echo.Context) error {
 	}
 
 	if err := h.newsRepo.Update(ctx, news); err != nil {
+		slog.Error("News.Update: failed to update news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스 수정에 실패했습니다",
@@ -394,6 +406,7 @@ func (h *NewsHandler) Publish(c echo.Context) error {
 				Message: "뉴스를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.Publish: failed to get news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스를 불러오는데 실패했습니다",
@@ -401,6 +414,7 @@ func (h *NewsHandler) Publish(c echo.Context) error {
 	}
 
 	if err := h.newsRepo.Publish(ctx, id, true); err != nil {
+		slog.Error("News.Publish: failed to publish news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스 발행에 실패했습니다",
@@ -435,6 +449,7 @@ func (h *NewsHandler) Unpublish(c echo.Context) error {
 				Message: "뉴스를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.Unpublish: failed to get news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스를 불러오는데 실패했습니다",
@@ -442,6 +457,7 @@ func (h *NewsHandler) Unpublish(c echo.Context) error {
 	}
 
 	if err := h.newsRepo.Publish(ctx, id, false); err != nil {
+		slog.Error("News.Unpublish: failed to unpublish news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스 발행 취소에 실패했습니다",
@@ -474,6 +490,7 @@ func (h *NewsHandler) Delete(c echo.Context) error {
 				Message: "뉴스를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("News.Delete: failed to delete news", "error", err, "news_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "뉴스 삭제에 실패했습니다",
@@ -537,6 +554,26 @@ func (h *NewsHandler) GenerateContent(c echo.Context) error {
 	// Generate content using AI
 	content, err := h.aiService.GenerateNewsContent(ctx, req.Input)
 	if err != nil {
+		// Log the error for debugging
+		slog.Error("News.GenerateContent: AI content generation failed",
+			"error", err,
+			"input_length", len(req.Input),
+		)
+
+		// Handle context cancellation/timeout
+		if errors.Is(err, context.Canceled) {
+			return c.JSON(499, model.ErrorResponse{ // 499 Client Closed Request
+				Error:   "request_cancelled",
+				Message: "요청이 취소되었습니다",
+			})
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return c.JSON(http.StatusGatewayTimeout, model.ErrorResponse{
+				Error:   "timeout",
+				Message: "AI 서비스 응답 시간이 초과되었습니다",
+			})
+		}
+		// Handle service-specific errors
 		if errors.Is(err, service.ErrNoAPIKey) {
 			return c.JSON(http.StatusServiceUnavailable, model.ErrorResponse{
 				Error:   "service_unavailable",
@@ -547,6 +584,24 @@ func (h *NewsHandler) GenerateContent(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 				Error:   "generation_failed",
 				Message: "콘텐츠 생성에 실패했습니다. 다시 시도해주세요",
+			})
+		}
+		if errors.Is(err, service.ErrAPIRateLimit) {
+			return c.JSON(http.StatusTooManyRequests, model.ErrorResponse{
+				Error:   "rate_limit",
+				Message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요",
+			})
+		}
+		if errors.Is(err, service.ErrAPIUnavailable) {
+			return c.JSON(http.StatusBadGateway, model.ErrorResponse{
+				Error:   "service_unavailable",
+				Message: "AI 서비스가 일시적으로 이용 불가합니다",
+			})
+		}
+		if errors.Is(err, service.ErrAPIBadRequest) {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "bad_request",
+				Message: "AI 서비스 요청이 잘못되었습니다",
 			})
 		}
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{

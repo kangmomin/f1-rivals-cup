@@ -64,6 +64,18 @@ var ErrNoAPIKey = errors.New("Gemini API key is not configured")
 // ErrNoContent is returned when no content is generated
 var ErrNoContent = errors.New("no content generated from AI")
 
+// ErrAPIUnavailable is returned when Gemini API returns 5xx error
+var ErrAPIUnavailable = errors.New("AI service temporarily unavailable")
+
+// ErrAPIRateLimit is returned when Gemini API returns 429 error
+var ErrAPIRateLimit = errors.New("AI service rate limit exceeded")
+
+// ErrAPIBadRequest is returned when Gemini API returns 4xx error
+var ErrAPIBadRequest = errors.New("invalid request to AI service")
+
+// maxResponseSize limits the response body to 1MB to prevent memory exhaustion
+const maxResponseSize = 1 * 1024 * 1024
+
 // GenerateNewsContent generates news content from user input using Gemini API
 func (s *AIService) GenerateNewsContent(ctx context.Context, userInput string) (string, error) {
 	if s.apiKey == "" {
@@ -111,11 +123,29 @@ func (s *AIService) GenerateNewsContent(ctx context.Context, userInput string) (
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
+		// Check for context cancellation/timeout
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// Handle non-2xx HTTP status codes
+	if resp.StatusCode != http.StatusOK {
+		switch {
+		case resp.StatusCode == http.StatusTooManyRequests:
+			return "", ErrAPIRateLimit
+		case resp.StatusCode >= 500:
+			return "", fmt.Errorf("%w: status %d", ErrAPIUnavailable, resp.StatusCode)
+		case resp.StatusCode >= 400:
+			return "", fmt.Errorf("%w: status %d", ErrAPIBadRequest, resp.StatusCode)
+		}
+	}
+
+	// Limit response size to prevent memory exhaustion
+	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
@@ -125,7 +155,7 @@ func (s *AIService) GenerateNewsContent(ctx context.Context, userInput string) (
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Check for API error
+	// Check for API error in response body
 	if geminiResp.Error != nil {
 		return "", fmt.Errorf("Gemini API error: %s (code: %d)", geminiResp.Error.Message, geminiResp.Error.Code)
 	}

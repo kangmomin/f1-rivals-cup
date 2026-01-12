@@ -203,6 +203,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 
 	// Clear refresh token from database
 	if err := h.userRepo.ClearRefreshToken(ctx, claims.UserID); err != nil {
+		slog.Error("Auth.Logout: failed to clear refresh token", "error", err, "userID", claims.UserID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -251,6 +252,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 				Message: "유효하지 않은 토큰입니다",
 			})
 		}
+		slog.Error("Auth.RefreshToken: failed to get user by ID", "error", err, "userID", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -268,6 +270,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	// Generate new tokens
 	accessToken, err := h.jwtService.GenerateAccessToken(user.ID, user.Email, user.Nickname, user.Role, user.Permissions)
 	if err != nil {
+		slog.Error("Auth.RefreshToken: failed to generate access token", "error", err, "userID", user.ID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "토큰 생성에 실패했습니다",
@@ -276,6 +279,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 
 	newRefreshToken, err := h.jwtService.GenerateRefreshToken(user.ID)
 	if err != nil {
+		slog.Error("Auth.RefreshToken: failed to generate refresh token", "error", err, "userID", user.ID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "토큰 생성에 실패했습니다",
@@ -284,6 +288,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 
 	// Save new refresh token
 	if err := h.userRepo.UpdateRefreshToken(ctx, user.ID, newRefreshToken); err != nil {
+		slog.Error("Auth.RefreshToken: failed to update refresh token", "error", err, "userID", user.ID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -326,6 +331,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 				Message: "이메일 또는 비밀번호가 올바르지 않습니다",
 			})
 		}
+		slog.Error("Auth.Login: failed to get user by email", "error", err, "email", req.Email)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -343,6 +349,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	// Generate tokens
 	accessToken, err := h.jwtService.GenerateAccessToken(user.ID, user.Email, user.Nickname, user.Role, user.Permissions)
 	if err != nil {
+		slog.Error("Auth.Login: failed to generate access token", "error", err, "email", req.Email)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "토큰 생성에 실패했습니다",
@@ -351,6 +358,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	refreshToken, err := h.jwtService.GenerateRefreshToken(user.ID)
 	if err != nil {
+		slog.Error("Auth.Login: failed to generate refresh token", "error", err, "email", req.Email)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "토큰 생성에 실패했습니다",
@@ -359,6 +367,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	// Save refresh token
 	if err := h.userRepo.UpdateRefreshToken(ctx, user.ID, refreshToken); err != nil {
+		slog.Error("Auth.Login: failed to update refresh token", "error", err, "email", req.Email)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -404,6 +413,7 @@ func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
 	// Generate reset token
 	resetToken, err := generateToken(32)
 	if err != nil {
+		slog.Error("Auth.RequestPasswordReset: failed to generate reset token", "error", err, "email", req.Email)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -414,6 +424,7 @@ func (h *AuthHandler) RequestPasswordReset(c echo.Context) error {
 	expires := time.Now().Add(1 * time.Hour)
 
 	if err := h.userRepo.SetPasswordResetToken(ctx, user.ID, resetToken, expires); err != nil {
+		slog.Error("Auth.RequestPasswordReset: failed to set password reset token", "error", err, "email", req.Email, "userID", user.ID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -473,6 +484,7 @@ func (h *AuthHandler) ConfirmPasswordReset(c echo.Context) error {
 	// Hash new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
+		slog.Error("Auth.ConfirmPasswordReset: failed to hash new password", "error", err, "userID", user.ID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -481,6 +493,7 @@ func (h *AuthHandler) ConfirmPasswordReset(c echo.Context) error {
 
 	// Update password
 	if err := h.userRepo.UpdatePassword(ctx, user.ID, string(hashedPassword)); err != nil {
+		slog.Error("Auth.ConfirmPasswordReset: failed to update password", "error", err, "userID", user.ID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "비밀번호 변경에 실패했습니다",
@@ -490,6 +503,7 @@ func (h *AuthHandler) ConfirmPasswordReset(c echo.Context) error {
 	// Clear all refresh tokens to force re-login
 	if err := h.userRepo.ClearRefreshToken(ctx, user.ID); err != nil {
 		// Log error but don't fail the request
+		slog.Error("Auth.ConfirmPasswordReset: failed to clear refresh token", "error", err, "userID", user.ID)
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{

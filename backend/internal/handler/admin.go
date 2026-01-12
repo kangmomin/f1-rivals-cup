@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -65,6 +66,7 @@ func (h *AdminHandler) ListUsers(c echo.Context) error {
 	}
 
 	if err != nil {
+		slog.Error("Admin.ListUsers: failed to list users", "error", err, "page", page, "limit", limit, "search", search, "role_filter", roleFilter)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "회원 목록을 불러오는데 실패했습니다",
@@ -115,6 +117,7 @@ func (h *AdminHandler) GetUser(c echo.Context) error {
 				Message: "유저를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Admin.GetUser: failed to get user", "error", err, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "유저 정보를 불러오는데 실패했습니다",
@@ -130,6 +133,7 @@ func (h *AdminHandler) GetUserStats(c echo.Context) error {
 
 	totalUsers, err := h.userRepo.CountUsers(ctx)
 	if err != nil {
+		slog.Error("Admin.GetUserStats: failed to count users", "error", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "통계를 불러오는데 실패했습니다",
@@ -195,6 +199,7 @@ func (h *AdminHandler) UpdateUserRole(c echo.Context) error {
 				Message: "유저를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Admin.UpdateUserRole: failed to get user", "error", err, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "유저 정보를 불러오는데 실패했습니다",
@@ -231,6 +236,7 @@ func (h *AdminHandler) UpdateUserRole(c echo.Context) error {
 				Message: "다른 관리자가 이 유저를 수정 중입니다. 페이지를 새로고침해주세요",
 			})
 		}
+		slog.Error("Admin.UpdateUserRole: failed to update user role", "error", err, "user_id", userID, "new_role", req.Role)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "역할 변경에 실패했습니다",
@@ -305,6 +311,7 @@ func (h *AdminHandler) UpdateUserPermissions(c echo.Context) error {
 				Message: "유저를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Admin.UpdateUserPermissions: failed to get user", "error", err, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "유저 정보를 불러오는데 실패했습니다",
@@ -330,6 +337,7 @@ func (h *AdminHandler) UpdateUserPermissions(c echo.Context) error {
 				Message: "다른 관리자가 이 유저를 수정 중입니다. 페이지를 새로고침해주세요",
 			})
 		}
+		slog.Error("Admin.UpdateUserPermissions: failed to update user permissions", "error", err, "user_id", userID, "permissions", req.Permissions)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "권한 변경에 실패했습니다",
@@ -397,6 +405,7 @@ func (h *AdminHandler) GetUserPermissionHistory(c echo.Context) error {
 
 	history, total, err := h.historyRepo.GetByTargetID(ctx, uid, page, limit)
 	if err != nil {
+		slog.Error("Admin.GetUserPermissionHistory: failed to get permission history", "error", err, "user_id", userID, "page", page, "limit", limit)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "권한 변경 기록을 불러오는데 실패했습니다",
@@ -429,6 +438,7 @@ func (h *AdminHandler) GetRecentPermissionHistory(c echo.Context) error {
 
 	history, err := h.historyRepo.GetRecentHistory(ctx, limit)
 	if err != nil {
+		slog.Error("Admin.GetRecentPermissionHistory: failed to get recent permission history", "error", err, "limit", limit)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "권한 변경 기록을 불러오는데 실패했습니다",

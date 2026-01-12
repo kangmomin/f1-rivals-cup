@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
@@ -46,6 +47,7 @@ func (h *MatchResultHandler) List(c echo.Context) error {
 				Message: "경기를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("MatchResult.List: failed to get match", "error", err, "match_id", matchID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 정보를 불러오는데 실패했습니다",
@@ -54,6 +56,7 @@ func (h *MatchResultHandler) List(c echo.Context) error {
 
 	results, err := h.resultRepo.ListByMatch(ctx, matchID)
 	if err != nil {
+		slog.Error("MatchResult.List: failed to list results", "error", err, "match_id", matchID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 결과를 불러오는데 실패했습니다",
@@ -100,6 +103,7 @@ func (h *MatchResultHandler) BulkUpdate(c echo.Context) error {
 				Message: "경기를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("MatchResult.BulkUpdate: failed to get match", "error", err, "match_id", matchID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 정보를 불러오는데 실패했습니다",
@@ -108,6 +112,7 @@ func (h *MatchResultHandler) BulkUpdate(c echo.Context) error {
 
 	// Bulk upsert results
 	if err := h.resultRepo.BulkUpsert(ctx, matchID, req.Results); err != nil {
+		slog.Error("MatchResult.BulkUpdate: failed to bulk upsert results", "error", err, "match_id", matchID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 결과 저장에 실패했습니다",
@@ -118,13 +123,14 @@ func (h *MatchResultHandler) BulkUpdate(c echo.Context) error {
 	if match.Status != model.MatchStatusCompleted {
 		match.Status = model.MatchStatusCompleted
 		if err := h.matchRepo.Update(ctx, match); err != nil {
-			// Log error but don't fail the request
+			slog.Error("MatchResult.BulkUpdate: failed to update match status", "error", err, "match_id", matchID)
 		}
 	}
 
 	// Return updated results
 	results, err := h.resultRepo.ListByMatch(ctx, matchID)
 	if err != nil {
+		slog.Error("MatchResult.BulkUpdate: failed to list results", "error", err, "match_id", matchID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 결과를 불러오는데 실패했습니다",
@@ -151,6 +157,7 @@ func (h *MatchResultHandler) Delete(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	if err := h.resultRepo.DeleteByMatch(ctx, matchID); err != nil {
+		slog.Error("MatchResult.Delete: failed to delete results", "error", err, "match_id", matchID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 결과 삭제에 실패했습니다",
@@ -184,6 +191,7 @@ func (h *MatchResultHandler) Standings(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("MatchResult.Standings: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 정보를 불러오는데 실패했습니다",
@@ -193,6 +201,7 @@ func (h *MatchResultHandler) Standings(c echo.Context) error {
 	// Get total races count
 	matches, err := h.matchRepo.ListByLeague(ctx, leagueID)
 	if err != nil {
+		slog.Error("MatchResult.Standings: failed to list matches", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 정보를 불러오는데 실패했습니다",
@@ -202,6 +211,7 @@ func (h *MatchResultHandler) Standings(c echo.Context) error {
 	// Get driver standings
 	standings, err := h.resultRepo.GetLeagueStandings(ctx, leagueID)
 	if err != nil {
+		slog.Error("MatchResult.Standings: failed to get driver standings", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "순위 정보를 불러오는데 실패했습니다",
@@ -211,6 +221,7 @@ func (h *MatchResultHandler) Standings(c echo.Context) error {
 	// Get team standings
 	teamStandings, err := h.resultRepo.GetTeamStandings(ctx, leagueID)
 	if err != nil {
+		slog.Error("MatchResult.Standings: failed to get team standings", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 순위 정보를 불러오는데 실패했습니다",

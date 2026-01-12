@@ -12,7 +12,7 @@ import (
 
 var (
 	ErrCommentNotFound = errors.New("comment not found")
-	ErrNewsNotFound    = errors.New("news not found")
+	// ErrNewsNotFound is defined in news.go
 )
 
 // CommentRepository handles comment database operations
