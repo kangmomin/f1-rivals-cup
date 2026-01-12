@@ -29,6 +29,12 @@ export default function Header() {
             >
               리그
             </Link>
+            <Link
+              to="/roadmap"
+              className="text-text-secondary hover:text-white transition-colors duration-150 font-medium"
+            >
+              로드맵
+            </Link>
           </nav>
 
           {/* Auth Section */}
