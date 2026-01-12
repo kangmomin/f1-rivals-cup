@@ -6,6 +6,7 @@ import { leagueService, League } from '../../services/league'
 import { useAuth } from '../../contexts/AuthContext'
 
 type EditorMode = 'create' | 'edit'
+type InsertMode = 'replace' | 'append'
 
 export default function NewsEditorPage() {
   const { leagueId, id } = useParams<{ leagueId?: string; id?: string }>()
@@ -22,6 +23,14 @@ export default function NewsEditorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
+
+  // AI 생성 모달 상태
+  const [showAIModal, setShowAIModal] = useState(false)
+  const [aiInput, setAIInput] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [aiError, setAIError] = useState<string | null>(null)
+  const [generatedContent, setGeneratedContent] = useState<string | null>(null)
+  const [insertMode, setInsertMode] = useState<InsertMode>('replace')
 
   const canAccess = isAuthenticated && hasRole(['ADMIN', 'STAFF'])
 
@@ -95,6 +104,54 @@ export default function NewsEditorPage() {
     }
   }
 
+  // AI 콘텐츠 생성
+  const handleAIGenerate = async () => {
+    if (!aiInput.trim()) {
+      setAIError('내용을 입력해주세요')
+      return
+    }
+
+    setIsGenerating(true)
+    setAIError(null)
+    setGeneratedContent(null)
+
+    try {
+      const result = await newsService.generateContent(aiInput.trim())
+      setGeneratedContent(result.content)
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'AI 콘텐츠 생성에 실패했습니다'
+      setAIError(message)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // 생성된 콘텐츠 삽입
+  const handleInsertContent = () => {
+    if (!generatedContent) return
+
+    if (insertMode === 'replace') {
+      setContent(generatedContent)
+    } else {
+      setContent(prev => prev ? `${prev}\n\n${generatedContent}` : generatedContent)
+    }
+
+    // 모달 닫기 및 상태 초기화
+    setShowAIModal(false)
+    setAIInput('')
+    setGeneratedContent(null)
+    setAIError(null)
+  }
+
+  // 모달 닫기
+  const handleCloseModal = () => {
+    setShowAIModal(false)
+    setAIInput('')
+    setGeneratedContent(null)
+    setAIError(null)
+    setIsGenerating(false)
+  }
+
   if (!canAccess) {
     return null
   }
@@ -131,6 +188,15 @@ export default function NewsEditorPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600 to-neon text-white hover:from-purple-500 hover:to-neon-light transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              AI로 작성하기
+            </button>
             <button
               onClick={() => setShowPreview(!showPreview)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -259,6 +325,177 @@ export default function NewsEditorPage() {
           </div>
         </div>
       </div>
+
+      {/* AI 생성 모달 */}
+      {showAIModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-carbon-dark border border-steel rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between p-6 border-b border-steel">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-600 to-neon flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">AI로 뉴스 작성하기</h2>
+                  <p className="text-sm text-text-secondary">정보를 입력하면 AI가 뉴스 형식으로 변환합니다</p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="text-text-secondary hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 모달 본문 */}
+            <div className="p-6 flex-1 overflow-y-auto">
+              {!generatedContent ? (
+                <>
+                  {/* 입력 영역 */}
+                  <label className="block text-sm font-medium text-white mb-2">
+                    작성하고 싶은 내용이나 정보를 입력하세요
+                  </label>
+                  <textarea
+                    value={aiInput}
+                    onChange={(e) => setAIInput(e.target.value)}
+                    placeholder="예: 시즌 3 개막전에서 홍길동 선수가 우승했습니다. 2위는 김철수, 3위는 이영희. 총 12명이 참가했고, 서킷은 모나코였습니다. 홍길동 선수는 폴 포지션에서 출발해 끝까지 선두를 지켰습니다..."
+                    className="w-full h-48 bg-carbon border border-steel rounded-lg p-4 text-white placeholder-text-secondary focus:outline-none focus:border-neon resize-none"
+                    disabled={isGenerating}
+                  />
+
+                  {/* 에러 메시지 */}
+                  {aiError && (
+                    <div className="mt-4 bg-loss/10 border border-loss rounded-md p-3 text-loss text-sm">
+                      {aiError}
+                    </div>
+                  )}
+
+                  {/* 팁 */}
+                  <div className="mt-4 bg-carbon/50 border border-steel/50 rounded-lg p-4">
+                    <p className="text-sm text-text-secondary">
+                      <span className="text-neon font-medium">Tip:</span> 구체적인 정보를 많이 포함할수록 더 좋은 뉴스 기사가 생성됩니다.
+                      선수 이름, 순위, 기록, 특이사항 등을 자유롭게 입력해보세요.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* 생성된 콘텐츠 미리보기 */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-white mb-2">
+                      생성된 뉴스 내용
+                    </label>
+                    <div className="bg-carbon border border-steel rounded-lg p-4 max-h-64 overflow-y-auto">
+                      <div className="prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-4 mb-2">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-lg font-bold text-white mt-3 mb-2">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-base font-bold text-white mt-2 mb-1">{children}</h3>,
+                            p: ({ children }) => <p className="text-text-secondary leading-relaxed mb-3">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc list-inside text-text-secondary mb-3 space-y-1">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal list-inside text-text-secondary mb-3 space-y-1">{children}</ol>,
+                            li: ({ children }) => <li className="text-text-secondary">{children}</li>,
+                            strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>,
+                          }}
+                        >
+                          {generatedContent}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 삽입 모드 선택 */}
+                  {content.trim() && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-white mb-2">
+                        삽입 방식
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="insertMode"
+                            value="replace"
+                            checked={insertMode === 'replace'}
+                            onChange={() => setInsertMode('replace')}
+                            className="w-4 h-4 accent-neon"
+                          />
+                          <span className="text-sm text-text-secondary">기존 내용 대체</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="insertMode"
+                            value="append"
+                            checked={insertMode === 'append'}
+                            onChange={() => setInsertMode('append')}
+                            className="w-4 h-4 accent-neon"
+                          />
+                          <span className="text-sm text-text-secondary">기존 내용 뒤에 추가</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* 모달 푸터 */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-steel">
+              {!generatedContent ? (
+                <>
+                  <button
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors"
+                    disabled={isGenerating}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleAIGenerate}
+                    disabled={isGenerating || !aiInput.trim()}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-neon text-white rounded-lg font-medium hover:from-purple-500 hover:to-neon-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        생성 중...
+                      </>
+                    ) : (
+                      '생성하기'
+                    )}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setGeneratedContent(null)}
+                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors"
+                  >
+                    다시 생성
+                  </button>
+                  <button
+                    onClick={handleInsertContent}
+                    className="px-6 py-2 bg-neon text-black rounded-lg font-medium hover:bg-neon-light transition-colors"
+                  >
+                    에디터에 삽입
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

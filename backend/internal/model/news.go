@@ -41,3 +41,13 @@ type ListNewsResponse struct {
 	Limit      int     `json:"limit"`
 	TotalPages int     `json:"total_pages"`
 }
+
+// GenerateNewsContentRequest represents a request to generate news content using AI
+type GenerateNewsContentRequest struct {
+	Input string `json:"input" validate:"required"`
+}
+
+// GenerateNewsContentResponse represents the response for AI-generated news content
+type GenerateNewsContentResponse struct {
+	Content string `json:"content"`
+}

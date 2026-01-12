@@ -10,6 +10,7 @@ import (
 	"github.com/f1-rivals-cup/backend/internal/handler"
 	custommiddleware "github.com/f1-rivals-cup/backend/internal/middleware"
 	"github.com/f1-rivals-cup/backend/internal/repository"
+	"github.com/f1-rivals-cup/backend/internal/service"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -50,6 +51,9 @@ func main() {
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(cfg.JWTSecret, cfg.JWTAccessExpiry, cfg.JWTRefreshExpiry)
 
+	// Initialize services
+	aiService := service.NewAIService(cfg.GeminiAPIKey)
+
 	// Initialize handlers
 	healthHandler := handler.NewHealthHandler()
 	authHandler := handler.NewAuthHandler(userRepo, jwtService)
@@ -59,7 +63,7 @@ func main() {
 	matchHandler := handler.NewMatchHandler(matchRepo, leagueRepo)
 	matchResultHandler := handler.NewMatchResultHandler(matchResultRepo, matchRepo, leagueRepo)
 	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo)
-	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo)
+	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo, aiService)
 	commentHandler := handler.NewCommentHandler(commentRepo)
 
 	// Initialize Echo
@@ -146,6 +150,7 @@ func main() {
 	adminGroup.PUT("/news/:id/publish", newsHandler.Publish, custommiddleware.RequirePermission(auth.PermNewsPublish))
 	adminGroup.PUT("/news/:id/unpublish", newsHandler.Unpublish, custommiddleware.RequirePermission(auth.PermNewsPublish))
 	adminGroup.DELETE("/news/:id", newsHandler.Delete, custommiddleware.RequirePermission(auth.PermNewsDelete))
+	adminGroup.POST("/news/generate", newsHandler.GenerateContent, custommiddleware.RequirePermission(auth.PermNewsCreate))
 
 	// Public league routes
 	leagueGroup := v1.Group("/leagues")

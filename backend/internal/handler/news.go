@@ -8,6 +8,7 @@ import (
 
 	"github.com/f1-rivals-cup/backend/internal/model"
 	"github.com/f1-rivals-cup/backend/internal/repository"
+	"github.com/f1-rivals-cup/backend/internal/service"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -16,13 +17,15 @@ import (
 type NewsHandler struct {
 	newsRepo   *repository.NewsRepository
 	leagueRepo *repository.LeagueRepository
+	aiService  *service.AIService
 }
 
 // NewNewsHandler creates a new NewsHandler
-func NewNewsHandler(newsRepo *repository.NewsRepository, leagueRepo *repository.LeagueRepository) *NewsHandler {
+func NewNewsHandler(newsRepo *repository.NewsRepository, leagueRepo *repository.LeagueRepository, aiService *service.AIService) *NewsHandler {
 	return &NewsHandler{
 		newsRepo:   newsRepo,
 		leagueRepo: leagueRepo,
+		aiService:  aiService,
 	}
 }
 
@@ -500,4 +503,59 @@ func validateCreateNewsRequest(req *model.CreateNewsRequest) error {
 	}
 
 	return nil
+}
+
+// GenerateContent handles POST /api/v1/admin/news/generate
+func (h *NewsHandler) GenerateContent(c echo.Context) error {
+	var req model.GenerateNewsContentRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 요청입니다",
+		})
+	}
+
+	// Validate input
+	req.Input = strings.TrimSpace(req.Input)
+	if req.Input == "" {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "validation_error",
+			Message: "입력 내용을 입력해주세요",
+		})
+	}
+
+	// Check if AI service is configured
+	if h.aiService == nil || !h.aiService.IsConfigured() {
+		return c.JSON(http.StatusServiceUnavailable, model.ErrorResponse{
+			Error:   "service_unavailable",
+			Message: "AI 서비스가 설정되지 않았습니다",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	// Generate content using AI
+	content, err := h.aiService.GenerateNewsContent(ctx, req.Input)
+	if err != nil {
+		if errors.Is(err, service.ErrNoAPIKey) {
+			return c.JSON(http.StatusServiceUnavailable, model.ErrorResponse{
+				Error:   "service_unavailable",
+				Message: "AI 서비스가 설정되지 않았습니다",
+			})
+		}
+		if errors.Is(err, service.ErrNoContent) {
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "generation_failed",
+				Message: "콘텐츠 생성에 실패했습니다. 다시 시도해주세요",
+			})
+		}
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "콘텐츠 생성 중 오류가 발생했습니다",
+		})
+	}
+
+	return c.JSON(http.StatusOK, model.GenerateNewsContentResponse{
+		Content: content,
+	})
 }
