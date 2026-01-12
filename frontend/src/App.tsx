@@ -20,6 +20,7 @@ import StandingsPage from './pages/leagues/StandingsPage'
 import NewsListPage from './pages/news/NewsListPage'
 import NewsDetailPage from './pages/news/NewsDetailPage'
 import NewsEditorPage from './pages/news/NewsEditorPage'
+import MatchDetailPage from './pages/matches/MatchDetailPage'
 import RoadmapPage from './pages/roadmap/RoadmapPage'
 import MyPage from './pages/mypage/MyPage'
 
@@ -183,6 +184,7 @@ function MainLayout() {
           <Route path="/leagues/:leagueId/news/new" element={<NewsEditorPage />} />
           <Route path="/news/:id" element={<NewsDetailPage />} />
           <Route path="/news/:id/edit" element={<NewsEditorPage />} />
+          <Route path="/matches/:id" element={<MatchDetailPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/mypage" element={<MyPage />} />
         </Routes>
