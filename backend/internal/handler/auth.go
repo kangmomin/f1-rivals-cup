@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	// Check if email exists
 	exists, err := h.userRepo.ExistsByEmail(ctx, req.Email)
 	if err != nil {
+		slog.Error("Register: ExistsByEmail failed", "email", req.Email, "error", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -67,6 +69,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	// Check if nickname exists
 	exists, err = h.userRepo.ExistsByNickname(ctx, req.Nickname)
 	if err != nil {
+		slog.Error("Register: ExistsByNickname failed", "nickname", req.Nickname, "error", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -82,6 +85,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		slog.Error("Register: password hashing failed", "error", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -91,6 +95,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	// Generate email verification token
 	verifyToken, err := generateToken(32)
 	if err != nil {
+		slog.Error("Register: token generation failed", "error", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
@@ -118,6 +123,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 				Message: "이미 사용 중인 닉네임입니다",
 			})
 		}
+		slog.Error("Register: user creation failed", "email", req.Email, "nickname", req.Nickname, "error", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "회원가입에 실패했습니다",
