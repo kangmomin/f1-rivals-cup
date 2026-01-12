@@ -259,6 +259,7 @@ export default function NewsEditorPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* AI 생성 기능 임시 비활성화
             <button
               onClick={() => setShowAIModal(true)}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600 to-neon text-white hover:from-purple-500 hover:to-neon-light transition-all flex items-center gap-2"
@@ -268,6 +269,7 @@ export default function NewsEditorPage() {
               </svg>
               AI로 작성하기
             </button>
+            */}
             <button
               onClick={() => setShowPreview(!showPreview)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
