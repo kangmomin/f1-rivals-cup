@@ -25,6 +25,9 @@ type Config struct {
 	SMTPHost string
 	SMTPPort string
 	SMTPFrom string
+
+	// AI
+	GeminiAPIKey string
 }
 
 // Load reads configuration from environment variables
@@ -51,6 +54,9 @@ func Load() (*Config, error) {
 		SMTPHost: getEnv("SMTP_HOST", "localhost"),
 		SMTPPort: getEnv("SMTP_PORT", "1025"),
 		SMTPFrom: getEnv("SMTP_FROM", "noreply@f1rivals.local"),
+
+		// AI
+		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
 	}
 
 	return cfg, nil

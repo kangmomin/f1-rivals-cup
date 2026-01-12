@@ -4,6 +4,7 @@ import { leagueService, League } from '../../services/league'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
 import { teamService, Team } from '../../services/team'
 import { matchService, Match } from '../../services/match'
+import { newsService } from '../../services/news'
 import { useAuth } from '../../contexts/AuthContext'
 
 const ALL_ROLES: ParticipantRole[] = ['director', 'player', 'reserve', 'engineer']
@@ -61,6 +62,9 @@ export default function LeagueDetailPage() {
   const [members, setMembers] = useState<LeagueParticipant[]>([])
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
 
+  // News notification state
+  const [unreadNewsCount, setUnreadNewsCount] = useState(0)
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return
@@ -72,6 +76,25 @@ export default function LeagueDetailPage() {
         setLeague(leagueData)
         setIsParticipating(statusData.is_participating)
         setParticipant(statusData.participant)
+
+        // 읽지 않은 뉴스 개수 확인 (로컬 스토리지 기반)
+        try {
+          const newsData = await newsService.listByLeague(id, 1, 10)
+          const lastReadTime = newsService.getLastReadTime(id)
+          if (newsData.news && newsData.news.length > 0) {
+            if (!lastReadTime) {
+              setUnreadNewsCount(newsData.news.length)
+            } else {
+              const lastReadDate = new Date(lastReadTime)
+              const unreadCount = newsData.news.filter(n =>
+                n.published_at && new Date(n.published_at) > lastReadDate
+              ).length
+              setUnreadNewsCount(unreadCount)
+            }
+          }
+        } catch {
+          // 뉴스 로딩 실패해도 메인 데이터는 표시
+        }
       } catch (err) {
         setError('리그 정보를 불러오는데 실패했습니다')
         console.error(err)
@@ -324,15 +347,31 @@ export default function LeagueDetailPage() {
                 </button>
               ))}
             </nav>
-            <Link
-              to={`/leagues/${id}/standings`}
-              className="mb-4 px-4 py-2 bg-racing/10 text-racing border border-racing/30 hover:bg-racing/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              순위표
-            </Link>
+            <div className="flex items-center gap-3 mb-4">
+              <Link
+                to={`/leagues/${id}/news`}
+                className="relative px-4 py-2 bg-neon/10 text-neon border border-neon/30 hover:bg-neon/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                </svg>
+                뉴스
+                {unreadNewsCount > 0 && (
+                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-racing text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {unreadNewsCount > 9 ? '9+' : unreadNewsCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                to={`/leagues/${id}/standings`}
+                className="px-4 py-2 bg-racing/10 text-racing border border-racing/30 hover:bg-racing/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                순위표
+              </Link>
+            </div>
           </div>
         </div>
 

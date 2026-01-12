@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
@@ -59,6 +60,7 @@ func (h *MatchHandler) Create(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Match.Create: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 정보를 불러오는데 실패했습니다",
@@ -85,6 +87,7 @@ func (h *MatchHandler) Create(c echo.Context) error {
 				Message: "이미 해당 라운드가 존재합니다",
 			})
 		}
+		slog.Error("Match.Create: failed to create match", "error", err, "league_id", leagueID, "round", req.Round)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 일정 생성에 실패했습니다",
@@ -109,6 +112,7 @@ func (h *MatchHandler) List(c echo.Context) error {
 
 	matches, err := h.matchRepo.ListByLeague(ctx, leagueID)
 	if err != nil {
+		slog.Error("Match.List: failed to list matches", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 일정을 불러오는데 실패했습니다",
@@ -146,6 +150,7 @@ func (h *MatchHandler) Get(c echo.Context) error {
 				Message: "경기를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Match.Get: failed to get match", "error", err, "match_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 정보를 불러오는데 실패했습니다",
@@ -184,6 +189,7 @@ func (h *MatchHandler) Update(c echo.Context) error {
 				Message: "경기를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Match.Update: failed to get match", "error", err, "match_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 정보를 불러오는데 실패했습니다",
@@ -226,6 +232,7 @@ func (h *MatchHandler) Update(c echo.Context) error {
 				Message: "이미 해당 라운드가 존재합니다",
 			})
 		}
+		slog.Error("Match.Update: failed to update match", "error", err, "match_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 정보 수정에 실패했습니다",
@@ -255,6 +262,7 @@ func (h *MatchHandler) Delete(c echo.Context) error {
 				Message: "경기를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Match.Delete: failed to delete match", "error", err, "match_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "경기 삭제에 실패했습니다",

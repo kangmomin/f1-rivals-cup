@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -78,6 +79,7 @@ func (h *LeagueHandler) Create(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	if err := h.leagueRepo.Create(ctx, league); err != nil {
+		slog.Error("League.Create: failed to create league", "error", err, "name", req.Name)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 생성에 실패했습니다",
@@ -105,6 +107,7 @@ func (h *LeagueHandler) List(c echo.Context) error {
 
 	leagues, total, err := h.leagueRepo.List(ctx, page, limit, status)
 	if err != nil {
+		slog.Error("League.List: failed to list leagues", "error", err, "page", page, "limit", limit, "status", status)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 목록을 불러오는데 실패했습니다",
@@ -147,6 +150,7 @@ func (h *LeagueHandler) Get(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("League.Get: failed to get league", "error", err, "id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그를 불러오는데 실패했습니다",
@@ -186,6 +190,7 @@ func (h *LeagueHandler) Update(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("League.Update: failed to get league", "error", err, "id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그를 불러오는데 실패했습니다",
@@ -225,6 +230,7 @@ func (h *LeagueHandler) Update(c echo.Context) error {
 	}
 
 	if err := h.leagueRepo.Update(ctx, league); err != nil {
+		slog.Error("League.Update: failed to update league", "error", err, "id", id, "name", league.Name)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 수정에 실패했습니다",
@@ -254,6 +260,7 @@ func (h *LeagueHandler) Delete(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("League.Delete: failed to delete league", "error", err, "id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 삭제에 실패했습니다",

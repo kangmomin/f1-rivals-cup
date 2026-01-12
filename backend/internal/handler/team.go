@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
@@ -44,6 +45,7 @@ func (h *TeamHandler) List(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Team.List: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 정보를 불러오는데 실패했습니다",
@@ -52,6 +54,7 @@ func (h *TeamHandler) List(c echo.Context) error {
 
 	teams, err := h.teamRepo.ListByLeague(ctx, leagueID)
 	if err != nil {
+		slog.Error("Team.List: failed to list teams", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 목록을 불러오는데 실패했습니다",
@@ -105,6 +108,7 @@ func (h *TeamHandler) Create(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Team.Create: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 정보를 불러오는데 실패했습니다",
@@ -125,6 +129,7 @@ func (h *TeamHandler) Create(c echo.Context) error {
 				Message: "이미 같은 이름의 팀이 있습니다",
 			})
 		}
+		slog.Error("Team.Create: failed to create team", "error", err, "league_id", leagueID, "name", req.Name)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 생성에 실패했습니다",
@@ -163,6 +168,7 @@ func (h *TeamHandler) Update(c echo.Context) error {
 				Message: "팀을 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Team.Update: failed to get team", "error", err, "team_id", teamID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 정보를 불러오는데 실패했습니다",
@@ -183,6 +189,7 @@ func (h *TeamHandler) Update(c echo.Context) error {
 				Message: "이미 같은 이름의 팀이 있습니다",
 			})
 		}
+		slog.Error("Team.Update: failed to update team", "error", err, "team_id", teamID, "name", team.Name)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 수정에 실패했습니다",
@@ -212,6 +219,7 @@ func (h *TeamHandler) Delete(c echo.Context) error {
 				Message: "팀을 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Team.Delete: failed to delete team", "error", err, "team_id", teamID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 삭제에 실패했습니다",

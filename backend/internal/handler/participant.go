@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
@@ -83,6 +84,7 @@ func (h *ParticipantHandler) Join(c echo.Context) error {
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Participant.Join: failed to get league", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "리그 정보를 불러오는데 실패했습니다",
@@ -108,6 +110,7 @@ func (h *ParticipantHandler) Join(c echo.Context) error {
 	if hasPlayerRole && req.TeamName != nil && *req.TeamName != "" {
 		playerCount, err := h.participantRepo.CountPlayersByTeam(ctx, leagueID, *req.TeamName)
 		if err != nil {
+			slog.Error("Participant.Join: failed to count players by team", "error", err, "league_id", leagueID, "team_name", *req.TeamName)
 			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 				Error:   "server_error",
 				Message: "팀 정보를 확인하는데 실패했습니다",
@@ -137,6 +140,7 @@ func (h *ParticipantHandler) Join(c echo.Context) error {
 				Message: "이미 참가 신청한 리그입니다",
 			})
 		}
+		slog.Error("Participant.Join: failed to create participant", "error", err, "league_id", leagueID, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가 신청에 실패했습니다",
@@ -175,6 +179,7 @@ func (h *ParticipantHandler) GetMyStatus(c echo.Context) error {
 				"participant":      nil,
 			})
 		}
+		slog.Error("Participant.GetMyStatus: failed to get participant status", "error", err, "league_id", leagueID, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가 상태를 확인하는데 실패했습니다",
@@ -216,6 +221,7 @@ func (h *ParticipantHandler) Cancel(c echo.Context) error {
 				Message: "참가 신청 내역이 없습니다",
 			})
 		}
+		slog.Error("Participant.Cancel: failed to get participant", "error", err, "league_id", leagueID, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가 상태를 확인하는데 실패했습니다",
@@ -231,6 +237,7 @@ func (h *ParticipantHandler) Cancel(c echo.Context) error {
 	}
 
 	if err := h.participantRepo.Delete(ctx, participant.ID); err != nil {
+		slog.Error("Participant.Cancel: failed to delete participant", "error", err, "participant_id", participant.ID, "league_id", leagueID, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가 취소에 실패했습니다",
@@ -258,6 +265,7 @@ func (h *ParticipantHandler) ListByLeague(c echo.Context) error {
 
 	participants, err := h.participantRepo.ListByLeague(ctx, leagueID, status)
 	if err != nil {
+		slog.Error("Participant.ListByLeague: failed to list participants", "error", err, "league_id", leagueID, "status", status)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가자 목록을 불러오는데 실패했습니다",
@@ -288,6 +296,7 @@ func (h *ParticipantHandler) ListMyParticipations(c echo.Context) error {
 
 	participants, err := h.participantRepo.ListByUser(ctx, userID)
 	if err != nil {
+		slog.Error("Participant.ListMyParticipations: failed to list user participations", "error", err, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가 목록을 불러오는데 실패했습니다",
@@ -339,6 +348,7 @@ func (h *ParticipantHandler) UpdateStatus(c echo.Context) error {
 				Message: "참가자를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Participant.UpdateStatus: failed to update participant status", "error", err, "participant_id", id, "status", req.Status)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "상태 변경에 실패했습니다",
@@ -380,6 +390,7 @@ func (h *ParticipantHandler) UpdateTeam(c echo.Context) error {
 				Message: "참가자를 찾을 수 없습니다",
 			})
 		}
+		slog.Error("Participant.UpdateTeam: failed to update participant team", "error", err, "participant_id", id, "team_name", req.TeamName)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 배정에 실패했습니다",
