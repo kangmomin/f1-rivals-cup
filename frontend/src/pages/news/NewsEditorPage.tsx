@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { newsService, News } from '../../services/news'
@@ -32,7 +32,75 @@ export default function NewsEditorPage() {
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [insertMode, setInsertMode] = useState<InsertMode>('replace')
 
+  // Auto-save 관련
+  const lastSavedRef = useRef<{ title: string; content: string }>({ title: '', content: '' })
+  const [isRestored, setIsRestored] = useState(false)
+
   const canAccess = isAuthenticated && hasRole(['ADMIN', 'STAFF'])
+
+  // localStorage 키 생성
+  const getStorageKey = useCallback(() => {
+    if (mode === 'edit' && id) {
+      return `news_draft_edit_${id}`
+    }
+    if (leagueId) {
+      return `news_draft_create_${leagueId}`
+    }
+    return null
+  }, [mode, id, leagueId])
+
+  // localStorage에서 복원
+  useEffect(() => {
+    if (isRestored) return
+    const storageKey = getStorageKey()
+    if (!storageKey) return
+
+    const saved = localStorage.getItem(storageKey)
+    if (saved) {
+      try {
+        const { title: savedTitle, content: savedContent } = JSON.parse(saved)
+        // 수정 모드에서는 서버 데이터가 로드된 후에만 복원 시도
+        if (mode === 'edit' && isLoading) return
+
+        // 생성 모드이거나, 수정 모드에서 저장된 데이터가 현재 데이터와 다른 경우에만 복원
+        if (mode === 'create' && (savedTitle || savedContent)) {
+          setTitle(savedTitle || '')
+          setContent(savedContent || '')
+        }
+        lastSavedRef.current = { title: savedTitle || '', content: savedContent || '' }
+      } catch {
+        // 파싱 실패 시 무시
+      }
+    }
+    setIsRestored(true)
+  }, [getStorageKey, mode, isLoading, isRestored])
+
+  // 1분마다 auto-save
+  useEffect(() => {
+    const storageKey = getStorageKey()
+    if (!storageKey) return
+
+    const intervalId = setInterval(() => {
+      const hasChanges =
+        title !== lastSavedRef.current.title ||
+        content !== lastSavedRef.current.content
+
+      if (hasChanges && (title || content)) {
+        localStorage.setItem(storageKey, JSON.stringify({ title, content }))
+        lastSavedRef.current = { title, content }
+      }
+    }, 60000) // 1분
+
+    return () => clearInterval(intervalId)
+  }, [getStorageKey, title, content])
+
+  // localStorage 클리어 함수
+  const clearDraft = useCallback(() => {
+    const storageKey = getStorageKey()
+    if (storageKey) {
+      localStorage.removeItem(storageKey)
+    }
+  }, [getStorageKey])
 
   useEffect(() => {
     if (!canAccess) {
@@ -86,6 +154,7 @@ export default function NewsEditorPage() {
         if (publish) {
           await newsService.publish(created.id)
         }
+        clearDraft()
         navigate(`/news/${created.id}`)
       } else if (mode === 'edit' && id) {
         await newsService.update(id, {
@@ -95,6 +164,7 @@ export default function NewsEditorPage() {
         if (publish && existingNews && !existingNews.is_published) {
           await newsService.publish(id)
         }
+        clearDraft()
         navigate(`/news/${id}`)
       }
     } catch (err: any) {
@@ -308,22 +378,13 @@ export default function NewsEditorPage() {
           >
             취소
           </Link>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => handleSave(false)}
-              disabled={isSaving}
-              className="px-6 py-3 bg-carbon-dark border border-steel hover:border-white text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              {isSaving ? '저장 중...' : '임시저장'}
-            </button>
-            <button
-              onClick={() => handleSave(true)}
-              disabled={isSaving}
-              className="btn-primary px-6 py-3 disabled:opacity-50"
-            >
-              {isSaving ? '저장 중...' : mode === 'create' ? '발행하기' : '저장하기'}
-            </button>
-          </div>
+          <button
+            onClick={() => handleSave(true)}
+            disabled={isSaving}
+            className="btn-primary px-6 py-3 disabled:opacity-50"
+          >
+            {isSaving ? '저장 중...' : mode === 'create' ? '발행하기' : '저장하기'}
+          </button>
         </div>
       </div>
 
