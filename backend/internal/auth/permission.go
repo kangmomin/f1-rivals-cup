@@ -59,6 +59,19 @@ const (
 // Wildcard permission for ADMIN
 const PermWildcard Permission = "*"
 
+// DefaultUserPermissions returns default permissions for new users
+// Excludes ADMIN/STAFF only permissions
+func DefaultUserPermissions() []string {
+	return []string{
+		string(PermFundView),
+		string(PermMatchEdit),
+		string(PermMatchResult),
+		string(PermNewsCreate),
+		string(PermNewsEdit),
+		string(PermLeagueEdit),
+	}
+}
+
 // AllPermissions returns all available permission codes
 func AllPermissions() []Permission {
 	return []Permission{

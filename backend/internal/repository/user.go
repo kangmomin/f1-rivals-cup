@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/f1-rivals-cup/backend/internal/auth"
 	"github.com/f1-rivals-cup/backend/internal/database"
 	"github.com/f1-rivals-cup/backend/internal/model"
 	"github.com/google/uuid"
@@ -34,18 +35,26 @@ func NewUserRepository(db *database.DB) *UserRepository {
 
 // Create creates a new user
 func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
+	// Get default permissions for new users
+	defaultPerms := auth.DefaultUserPermissions()
+	defaultPermsJSON, err := json.Marshal(defaultPerms)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO users (email, password_hash, nickname, email_verify_token, role, permissions)
-		VALUES ($1, $2, $3, $4, 'USER', '[]'::jsonb)
+		VALUES ($1, $2, $3, $4, 'USER', $5::jsonb)
 		RETURNING id, role, permissions, version, created_at, updated_at
 	`
 
 	var permissionsJSON []byte
-	err := r.db.Pool.QueryRowContext(ctx, query,
+	err = r.db.Pool.QueryRowContext(ctx, query,
 		user.Email,
 		user.PasswordHash,
 		user.Nickname,
 		user.EmailVerifyToken,
+		string(defaultPermsJSON),
 	).Scan(&user.ID, &user.Role, &permissionsJSON, &user.Version, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
