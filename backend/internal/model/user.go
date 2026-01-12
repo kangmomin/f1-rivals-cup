@@ -14,7 +14,7 @@ type User struct {
 	Nickname             string     `json:"nickname"`
 	Role                 string     `json:"role"`
 	Permissions          []string   `json:"permissions"`
-	Version              int        `json:"-"` // For optimistic locking
+	Version              int        `json:"version"` // For optimistic locking
 	EmailVerified        bool       `json:"email_verified"`
 	EmailVerifyToken     *string    `json:"-"`
 	PasswordResetToken   *string    `json:"-"`
