@@ -83,7 +83,7 @@ func (s *AIService) GenerateNewsContent(ctx context.Context, userInput string) (
 	}
 
 	// Gemini API endpoint
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=%s", s.apiKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=%s", s.apiKey)
 
 	prompt := fmt.Sprintf(`당신은 F1 e스포츠 리그의 뉴스 기자입니다. 아래 정보를 바탕으로 Markdown 형식의 뉴스 기사를 작성해주세요.
 

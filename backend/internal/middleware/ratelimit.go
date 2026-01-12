@@ -113,5 +113,5 @@ func RateLimitMiddleware(limiter *RateLimiter) echo.MiddlewareFunc {
 }
 
 // AIRateLimiter is a pre-configured rate limiter for AI endpoints
-// Allows 10 requests per minute with a burst of 5
-var AIRateLimiter = NewRateLimiter(10, time.Minute, 5)
+// Allows 30 requests per minute with a burst of 10
+var AIRateLimiter = NewRateLimiter(30, time.Minute, 10)
