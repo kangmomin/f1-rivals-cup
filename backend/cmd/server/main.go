@@ -44,6 +44,8 @@ func main() {
 	matchRepo := repository.NewMatchRepository(db)
 	matchResultRepo := repository.NewMatchResultRepository(db)
 	teamRepo := repository.NewTeamRepository(db)
+	newsRepo := repository.NewNewsRepository(db)
+	commentRepo := repository.NewCommentRepository(db)
 
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(cfg.JWTSecret, cfg.JWTAccessExpiry, cfg.JWTRefreshExpiry)
@@ -57,6 +59,8 @@ func main() {
 	matchHandler := handler.NewMatchHandler(matchRepo, leagueRepo)
 	matchResultHandler := handler.NewMatchResultHandler(matchResultRepo, matchRepo, leagueRepo)
 	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo)
+	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo)
+	commentHandler := handler.NewCommentHandler(commentRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -134,6 +138,15 @@ func main() {
 	adminGroup.PUT("/teams/:id", teamHandler.Update)
 	adminGroup.DELETE("/teams/:id", teamHandler.Delete)
 
+	// Admin news routes (protected with permissions)
+	adminGroup.GET("/leagues/:id/news", newsHandler.ListAll)
+	adminGroup.GET("/news/:id", newsHandler.GetAdmin)
+	adminGroup.POST("/leagues/:id/news", newsHandler.Create, custommiddleware.RequirePermission(auth.PermNewsCreate))
+	adminGroup.PUT("/news/:id", newsHandler.Update, custommiddleware.RequirePermission(auth.PermNewsEdit))
+	adminGroup.PUT("/news/:id/publish", newsHandler.Publish, custommiddleware.RequirePermission(auth.PermNewsPublish))
+	adminGroup.PUT("/news/:id/unpublish", newsHandler.Unpublish, custommiddleware.RequirePermission(auth.PermNewsPublish))
+	adminGroup.DELETE("/news/:id", newsHandler.Delete, custommiddleware.RequirePermission(auth.PermNewsDelete))
+
 	// Public league routes
 	leagueGroup := v1.Group("/leagues")
 	leagueGroup.GET("", leagueHandler.List)
@@ -141,6 +154,23 @@ func main() {
 	leagueGroup.GET("/:id/matches", matchHandler.List)
 	leagueGroup.GET("/:id/standings", matchResultHandler.Standings)
 	leagueGroup.GET("/:id/teams", teamHandler.List)
+	leagueGroup.GET("/:id/news", newsHandler.List)
+
+	// Public news routes
+	newsGroup := v1.Group("/news")
+	newsGroup.GET("/:id", newsHandler.Get)
+	newsGroup.GET("/:id/comments", commentHandler.List)
+
+	// News comment routes (protected - create comment)
+	protectedNewsGroup := v1.Group("/news")
+	protectedNewsGroup.Use(custommiddleware.AuthMiddleware(jwtService))
+	protectedNewsGroup.POST("/:id/comments", commentHandler.Create)
+
+	// Comment routes (protected - update/delete)
+	commentGroup := v1.Group("/comments")
+	commentGroup.Use(custommiddleware.AuthMiddleware(jwtService))
+	commentGroup.PUT("/:id", commentHandler.Update)
+	commentGroup.DELETE("/:id", commentHandler.Delete)
 
 	// Public match routes
 	matchGroup := v1.Group("/matches")
