@@ -79,12 +79,13 @@ export default function NewsEditorPage() {
 
     try {
       if (mode === 'create' && leagueId) {
-        const created = await newsService.create({
-          league_id: leagueId,
+        const created = await newsService.create(leagueId, {
           title: title.trim(),
           content: content.trim(),
-          is_published: publish,
         })
+        if (publish) {
+          await newsService.publish(created.id)
+        }
         navigate(`/news/${created.id}`)
       } else if (mode === 'edit' && id) {
         await newsService.update(id, {

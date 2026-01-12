@@ -83,32 +83,32 @@ export const newsService = {
     return response.data
   },
 
-  // 뉴스 작성
-  async create(data: CreateNewsRequest): Promise<News> {
-    const response = await api.post<News>('/news', data)
+  // 뉴스 작성 (Admin)
+  async create(leagueId: string, data: Omit<CreateNewsRequest, 'league_id'>): Promise<News> {
+    const response = await api.post<News>(`/admin/leagues/${leagueId}/news`, data)
     return response.data
   },
 
-  // 뉴스 수정
+  // 뉴스 수정 (Admin)
   async update(newsId: string, data: UpdateNewsRequest): Promise<News> {
-    const response = await api.put<News>(`/news/${newsId}`, data)
+    const response = await api.put<News>(`/admin/news/${newsId}`, data)
     return response.data
   },
 
-  // 뉴스 삭제
+  // 뉴스 삭제 (Admin)
   async delete(newsId: string): Promise<void> {
-    await api.delete(`/news/${newsId}`)
+    await api.delete(`/admin/news/${newsId}`)
   },
 
   // 뉴스 발행
   async publish(newsId: string): Promise<News> {
-    const response = await api.post<News>(`/news/${newsId}/publish`)
+    const response = await api.put<News>(`/admin/news/${newsId}/publish`)
     return response.data
   },
 
   // 뉴스 발행 취소
   async unpublish(newsId: string): Promise<News> {
-    const response = await api.post<News>(`/news/${newsId}/unpublish`)
+    const response = await api.put<News>(`/admin/news/${newsId}/unpublish`)
     return response.data
   },
 
