@@ -3,17 +3,51 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useEffect } from 'react'
 
 export default function AdminLayout() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading, canAccessAdmin } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (isLoading) return
+
     if (!isAuthenticated) {
       navigate('/login', { state: { from: '/admin' } })
+      return
     }
-  }, [isAuthenticated, navigate])
+
+    if (!canAccessAdmin()) {
+      navigate('/', { replace: true })
+    }
+  }, [isAuthenticated, isLoading, canAccessAdmin, navigate])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-carbon flex items-center justify-center">
+        <div className="text-text-secondary">로딩 중...</div>
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return null
+  }
+
+  if (!canAccessAdmin()) {
+    return (
+      <div className="min-h-screen bg-carbon flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">접근 권한이 없습니다</h1>
+          <p className="text-text-secondary mb-6">
+            관리자 페이지에 접근할 수 있는 권한이 없습니다.
+          </p>
+          <Link
+            to="/"
+            className="btn-primary"
+          >
+            메인으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -34,7 +68,10 @@ export default function AdminLayout() {
             <div className="w-8 h-8 rounded-full bg-steel flex items-center justify-center text-white text-sm font-medium">
               {user?.nickname?.charAt(0).toUpperCase()}
             </div>
-            <span className="text-sm text-white">{user?.nickname}</span>
+            <div className="flex flex-col">
+              <span className="text-sm text-white">{user?.nickname}</span>
+              <span className="text-xs text-text-secondary">{user?.role}</span>
+            </div>
           </div>
           <Link
             to="/"
