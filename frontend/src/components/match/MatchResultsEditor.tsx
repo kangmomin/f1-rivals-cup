@@ -12,8 +12,6 @@ const SPRINT_POINTS: Record<number, number> = {
   1: 8, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1,
 }
 
-const FASTEST_LAP_BONUS = 1
-
 interface ResultRow {
   id: string
   participantId: string
@@ -86,12 +84,9 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
   }, [match.id, match.league_id])
 
   // Calculate race points based on position
-  const calculateRacePoints = useCallback((position: number | null, fastestLap: boolean, dnf: boolean): number => {
+  const calculateRacePoints = useCallback((position: number | null, dnf: boolean): number => {
     if (dnf || position === null) return 0
-    const basePoints = RACE_POINTS[position] || 0
-    // Fastest lap bonus only if finished in top 10
-    const bonus = fastestLap && position <= 10 ? FASTEST_LAP_BONUS : 0
-    return basePoints + bonus
+    return RACE_POINTS[position] || 0
   }, [])
 
   // Calculate sprint points based on position
@@ -142,11 +137,10 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
         }
       }
 
-      // Recalculate points when position, fastestLap, or dnf changes
-      if (field === 'position' || field === 'fastestLap' || field === 'dnf') {
+      // Recalculate points when position or dnf changes
+      if (field === 'position' || field === 'dnf') {
         updated.points = calculateRacePoints(
           field === 'position' ? value as number | null : updated.position,
-          field === 'fastestLap' ? value as boolean : updated.fastestLap,
           field === 'dnf' ? value as boolean : updated.dnf
         )
       }
@@ -210,13 +204,6 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
     const fastestLapCount = results.filter(r => r.fastestLap).length
     if (fastestLapCount > 1) {
       setError('패스티스트 랩은 한 명만 선택할 수 있습니다')
-      return
-    }
-
-    // Validate: fastest lap only for drivers in top 10 and not DNF
-    const fastestLapDriver = results.find(r => r.fastestLap)
-    if (fastestLapDriver && (fastestLapDriver.dnf || fastestLapDriver.position === null || fastestLapDriver.position > 10)) {
-      setError('패스티스트 랩은 10위 이내 완주 선수만 선택할 수 있습니다')
       return
     }
 
@@ -455,7 +442,6 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
                     <p className="font-medium text-white mb-1">레이스</p>
                     <p>1위: 25점 | 2위: 18점 | 3위: 15점 | 4위: 12점 | 5위: 10점</p>
                     <p>6위: 8점 | 7위: 6점 | 8위: 4점 | 9위: 2점 | 10위: 1점</p>
-                    <p className="mt-1">패스티스트 랩: +1점 (10위 이내)</p>
                   </div>
                   {match.has_sprint && (
                     <div>
