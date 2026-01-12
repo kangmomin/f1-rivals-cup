@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { leagueService, League } from '../../services/league'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
 import { teamService, Team, CreateTeamRequest, OFFICIAL_F1_TEAMS } from '../../services/team'
+import { matchService, Match } from '../../services/match'
+import MatchResultsEditor from '../../components/match/MatchResultsEditor'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: '준비중',
@@ -32,7 +34,21 @@ const PARTICIPANT_STATUS_COLORS: Record<string, string> = {
   rejected: 'bg-loss/10 text-loss',
 }
 
-type TabType = 'info' | 'teams' | 'applications' | 'members'
+const MATCH_STATUS_LABELS: Record<string, string> = {
+  upcoming: '예정',
+  in_progress: '진행중',
+  completed: '완료',
+  cancelled: '취소됨',
+}
+
+const MATCH_STATUS_COLORS: Record<string, string> = {
+  upcoming: 'bg-neon/10 text-neon',
+  in_progress: 'bg-racing/10 text-racing',
+  completed: 'bg-profit/10 text-profit',
+  cancelled: 'bg-loss/10 text-loss',
+}
+
+type TabType = 'info' | 'teams' | 'matches' | 'applications' | 'members'
 
 export default function LeagueDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -60,6 +76,12 @@ export default function LeagueDetailPage() {
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false)
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null)
   const [updatingTeamParticipantId, setUpdatingTeamParticipantId] = useState<string | null>(null)
+
+  // Match states
+  const [matches, setMatches] = useState<Match[]>([])
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false)
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
+  const [showResultsEditor, setShowResultsEditor] = useState(false)
 
   useEffect(() => {
     const fetchLeague = async () => {
@@ -126,6 +148,24 @@ export default function LeagueDetailPage() {
       }
     }
     fetchTeams()
+  }, [id, activeTab])
+
+  // Fetch matches when matches tab is active
+  useEffect(() => {
+    const fetchMatches = async () => {
+      if (!id || activeTab !== 'matches') return
+
+      setIsLoadingMatches(true)
+      try {
+        const data = await matchService.listByLeague(id)
+        setMatches(data.matches || [])
+      } catch (err) {
+        console.error('Failed to fetch matches:', err)
+      } finally {
+        setIsLoadingMatches(false)
+      }
+    }
+    fetchMatches()
   }, [id, activeTab])
 
   const handleUpdateStatus = async (participantId: string, status: 'approved' | 'rejected') => {
@@ -277,6 +317,25 @@ export default function LeagueDetailPage() {
     })
   }
 
+  // Match handlers
+  const handleOpenResultsEditor = (match: Match) => {
+    setSelectedMatch(match)
+    setShowResultsEditor(true)
+  }
+
+  const handleCloseResultsEditor = () => {
+    setShowResultsEditor(false)
+    setSelectedMatch(null)
+  }
+
+  const handleResultsSaved = async () => {
+    // Refresh matches to update status
+    if (id) {
+      const data = await matchService.listByLeague(id)
+      setMatches(data.matches || [])
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -304,6 +363,7 @@ export default function LeagueDetailPage() {
   const tabs = [
     { key: 'info' as TabType, label: '리그 정보' },
     { key: 'teams' as TabType, label: '참여 팀' },
+    { key: 'matches' as TabType, label: '경기 일정' },
     { key: 'applications' as TabType, label: '참가 신청', badge: pendingCount > 0 ? pendingCount : undefined },
     { key: 'members' as TabType, label: '참여 인원' },
   ]
@@ -471,6 +531,78 @@ export default function LeagueDetailPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'matches' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">총 {matches.length}개 경기</span>
+            </div>
+
+            {isLoadingMatches ? (
+              <div className="p-8 text-center text-text-secondary">로딩 중...</div>
+            ) : matches.length === 0 ? (
+              <div className="bg-carbon-dark border border-steel rounded-lg p-8 text-center">
+                <p className="text-text-secondary">등록된 경기가 없습니다</p>
+              </div>
+            ) : (
+              <div className="bg-carbon-dark border border-steel rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-steel">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">라운드</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">서킷</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">경기일</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">시간</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase">스프린트</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">상태</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-steel">
+                    {matches.map((match) => (
+                      <tr key={match.id} className="hover:bg-steel/20">
+                        <td className="px-4 py-3 text-sm text-white font-medium">
+                          R{match.round}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-white">
+                          {match.track}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">
+                          {formatDate(match.match_date)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">
+                          {match.match_time || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {match.has_sprint ? (
+                            <span className="px-2 py-0.5 bg-racing/10 text-racing rounded text-xs">
+                              스프린트
+                            </span>
+                          ) : (
+                            <span className="text-text-secondary text-xs">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${MATCH_STATUS_COLORS[match.status]}`}>
+                            {MATCH_STATUS_LABELS[match.status]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleOpenResultsEditor(match)}
+                            className="px-3 py-1 bg-neon/10 text-neon hover:bg-neon/20 rounded text-xs font-medium transition-colors"
+                          >
+                            결과 입력
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -807,6 +939,15 @@ export default function LeagueDetailPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Match Results Editor Modal */}
+      {showResultsEditor && selectedMatch && (
+        <MatchResultsEditor
+          match={selectedMatch}
+          onClose={handleCloseResultsEditor}
+          onSave={handleResultsSaved}
+        />
       )}
     </div>
   )
