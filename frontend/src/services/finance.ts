@@ -72,7 +72,7 @@ export const financeService = {
     return response.data
   },
 
-  // Transactions
+  // Transactions (Admin)
   createTransaction: async (leagueId: string, data: {
     from_account_id: string
     to_account_id: string
@@ -81,6 +81,18 @@ export const financeService = {
     description?: string
   }) => {
     const response = await api.post<Transaction>(`/admin/leagues/${leagueId}/transactions`, data)
+    return response.data
+  },
+
+  // Transactions (Director - 감독용)
+  createTransactionByDirector: async (leagueId: string, data: {
+    from_account_id: string
+    to_account_id: string
+    amount: number
+    category: string
+    description?: string
+  }) => {
+    const response = await api.post<Transaction>(`/leagues/${leagueId}/transactions`, data)
     return response.data
   },
 

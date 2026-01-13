@@ -67,7 +67,7 @@ func main() {
 	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo, accountRepo)
 	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo, aiService)
 	commentHandler := handler.NewCommentHandler(commentRepo)
-	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo)
+	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -213,6 +213,7 @@ func main() {
 	protectedLeagueGroup.Use(custommiddleware.AuthMiddleware(jwtService))
 	protectedLeagueGroup.POST("/:id/join", participantHandler.Join)
 	protectedLeagueGroup.DELETE("/:id/join", participantHandler.Cancel)
+	protectedLeagueGroup.POST("/:id/transactions", financeHandler.CreateTransactionByDirector)
 
 	// User profile routes (protected)
 	meGroup := v1.Group("/me")

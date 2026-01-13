@@ -16,17 +16,23 @@ type FinanceHandler struct {
 	accountRepo     *repository.AccountRepository
 	transactionRepo *repository.TransactionRepository
 	leagueRepo      *repository.LeagueRepository
+	participantRepo *repository.ParticipantRepository
+	teamRepo        *repository.TeamRepository
 }
 
 func NewFinanceHandler(
 	accountRepo *repository.AccountRepository,
 	transactionRepo *repository.TransactionRepository,
 	leagueRepo *repository.LeagueRepository,
+	participantRepo *repository.ParticipantRepository,
+	teamRepo *repository.TeamRepository,
 ) *FinanceHandler {
 	return &FinanceHandler{
 		accountRepo:     accountRepo,
 		transactionRepo: transactionRepo,
 		leagueRepo:      leagueRepo,
+		participantRepo: participantRepo,
+		teamRepo:        teamRepo,
 	}
 }
 
@@ -466,4 +472,192 @@ func (h *FinanceHandler) GetFinanceStats(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, stats)
+}
+
+// CreateTransactionByDirector handles POST /api/v1/leagues/:id/transactions
+// Allows directors to create transactions from their team accounts
+func (h *FinanceHandler) CreateTransactionByDirector(c echo.Context) error {
+	leagueIDStr := c.Param("id")
+	leagueID, err := uuid.Parse(leagueIDStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 리그 ID입니다",
+		})
+	}
+
+	// Get current user ID from context
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "로그인이 필요합니다",
+		})
+	}
+
+	var req model.CreateTransactionRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 요청입니다",
+		})
+	}
+
+	// Validate required fields
+	if req.Amount <= 0 {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "금액은 0보다 커야 합니다",
+		})
+	}
+
+	if req.FromAccountID == req.ToAccountID {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "출금 계좌와 입금 계좌가 같을 수 없습니다",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	// Check if league exists
+	_, err = h.leagueRepo.GetByID(ctx, leagueID)
+	if err != nil {
+		if errors.Is(err, repository.ErrLeagueNotFound) {
+			return c.JSON(http.StatusNotFound, model.ErrorResponse{
+				Error:   "not_found",
+				Message: "리그를 찾을 수 없습니다",
+			})
+		}
+		slog.Error("Finance.CreateTransactionByDirector: failed to get league", "error", err, "league_id", leagueID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "리그 정보를 불러오는데 실패했습니다",
+		})
+	}
+
+	// Get the teams where user is a director
+	directorTeams, err := h.participantRepo.GetDirectorTeams(ctx, leagueID, userID)
+	if err != nil {
+		slog.Error("Finance.CreateTransactionByDirector: failed to get director teams", "error", err, "user_id", userID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "권한 확인에 실패했습니다",
+		})
+	}
+
+	if len(directorTeams) == 0 {
+		return c.JSON(http.StatusForbidden, model.ErrorResponse{
+			Error:   "forbidden",
+			Message: "감독 권한이 없습니다",
+		})
+	}
+
+	// Verify from account exists and belongs to this league
+	fromAccount, err := h.accountRepo.GetByID(ctx, req.FromAccountID)
+	if err != nil {
+		if errors.Is(err, repository.ErrAccountNotFound) {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_request",
+				Message: "출금 계좌를 찾을 수 없습니다",
+			})
+		}
+		slog.Error("Finance.CreateTransactionByDirector: failed to get from account", "error", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "계좌 정보를 불러오는데 실패했습니다",
+		})
+	}
+	if fromAccount.LeagueID != leagueID {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "출금 계좌가 해당 리그에 속하지 않습니다",
+		})
+	}
+
+	// Verify from account belongs to one of the director's teams
+	if fromAccount.OwnerType != model.OwnerTypeTeam {
+		return c.JSON(http.StatusForbidden, model.ErrorResponse{
+			Error:   "forbidden",
+			Message: "팀 계좌에서만 거래를 생성할 수 있습니다",
+		})
+	}
+
+	// Get team info to check ownership
+	team, err := h.teamRepo.GetByID(ctx, fromAccount.OwnerID)
+	if err != nil {
+		slog.Error("Finance.CreateTransactionByDirector: failed to get team", "error", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "팀 정보를 불러오는데 실패했습니다",
+		})
+	}
+
+	// Check if user is director of this team
+	isDirectorOfTeam := false
+	for _, teamName := range directorTeams {
+		if teamName == team.Name {
+			isDirectorOfTeam = true
+			break
+		}
+	}
+
+	if !isDirectorOfTeam {
+		return c.JSON(http.StatusForbidden, model.ErrorResponse{
+			Error:   "forbidden",
+			Message: "본인 소속 팀의 계좌에서만 거래를 생성할 수 있습니다",
+		})
+	}
+
+	// Verify to account exists and belongs to this league
+	toAccount, err := h.accountRepo.GetByID(ctx, req.ToAccountID)
+	if err != nil {
+		if errors.Is(err, repository.ErrAccountNotFound) {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_request",
+				Message: "입금 계좌를 찾을 수 없습니다",
+			})
+		}
+		slog.Error("Finance.CreateTransactionByDirector: failed to get to account", "error", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "계좌 정보를 불러오는데 실패했습니다",
+		})
+	}
+	if toAccount.LeagueID != leagueID {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "입금 계좌가 해당 리그에 속하지 않습니다",
+		})
+	}
+
+	transaction := &model.Transaction{
+		LeagueID:      leagueID,
+		FromAccountID: req.FromAccountID,
+		ToAccountID:   req.ToAccountID,
+		Amount:        req.Amount,
+		Category:      req.Category,
+		Description:   req.Description,
+		CreatedBy:     &userID,
+	}
+
+	if err := h.transactionRepo.Create(ctx, transaction); err != nil {
+		if errors.Is(err, repository.ErrInsufficientBalance) {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "insufficient_balance",
+				Message: "잔액이 부족합니다",
+			})
+		}
+		slog.Error("Finance.CreateTransactionByDirector: failed to create transaction", "error", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "거래 생성에 실패했습니다",
+		})
+	}
+
+	// Set names for response
+	transaction.FromName = fromAccount.OwnerName
+	transaction.ToName = toAccount.OwnerName
+
+	return c.JSON(http.StatusCreated, transaction)
 }

@@ -6,6 +6,11 @@ interface TransactionFormProps {
   accounts: Account[]
   onClose: () => void
   onSuccess: () => void
+  // 감독 모드: 출금 계좌가 고정됨
+  directorMode?: {
+    fromAccountId: string
+    fromAccountName: string
+  }
 }
 
 const CATEGORY_OPTIONS = [
@@ -16,8 +21,8 @@ const CATEGORY_OPTIONS = [
   { value: 'other', label: '기타' },
 ]
 
-export default function TransactionForm({ leagueId, accounts, onClose, onSuccess }: TransactionFormProps) {
-  const [fromAccountId, setFromAccountId] = useState('')
+export default function TransactionForm({ leagueId, accounts, onClose, onSuccess, directorMode }: TransactionFormProps) {
+  const [fromAccountId, setFromAccountId] = useState(directorMode?.fromAccountId || '')
   const [toAccountId, setToAccountId] = useState('')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('transfer')
@@ -64,13 +69,19 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
 
     setIsSubmitting(true)
     try {
-      await financeService.createTransaction(leagueId, {
+      const transactionData = {
         from_account_id: fromAccountId,
         to_account_id: toAccountId,
         amount: parsedAmount,
         category,
         description: description || undefined,
-      })
+      }
+
+      if (directorMode) {
+        await financeService.createTransactionByDirector(leagueId, transactionData)
+      } else {
+        await financeService.createTransaction(leagueId, transactionData)
+      }
       onSuccess()
       onClose()
     } catch (err: unknown) {
@@ -107,18 +118,24 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
           {/* From Account */}
           <div>
             <label className="block text-sm text-text-secondary mb-1">보내는 계좌</label>
-            <select
-              value={fromAccountId}
-              onChange={(e) => setFromAccountId(e.target.value)}
-              className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white focus:outline-none focus:border-neon"
-            >
-              <option value="">선택해주세요</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.owner_name} ({account.balance.toLocaleString('ko-KR')}원)
-                </option>
-              ))}
-            </select>
+            {directorMode ? (
+              <div className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white">
+                {directorMode.fromAccountName}
+              </div>
+            ) : (
+              <select
+                value={fromAccountId}
+                onChange={(e) => setFromAccountId(e.target.value)}
+                className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white focus:outline-none focus:border-neon"
+              >
+                <option value="">선택해주세요</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.owner_name} ({account.balance.toLocaleString('ko-KR')}원)
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* To Account */}

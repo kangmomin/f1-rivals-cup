@@ -252,3 +252,33 @@ func (r *ParticipantRepository) UpdateTeam(ctx context.Context, id uuid.UUID, te
 
 	return nil
 }
+
+// GetDirectorTeams returns the team names where the user is an approved director in a league
+func (r *ParticipantRepository) GetDirectorTeams(ctx context.Context, leagueID, userID uuid.UUID) ([]string, error) {
+	query := `
+		SELECT team_name
+		FROM league_participants
+		WHERE league_id = $1
+		AND user_id = $2
+		AND status = 'approved'
+		AND 'director' = ANY(roles)
+		AND team_name IS NOT NULL
+	`
+
+	rows, err := r.db.Pool.QueryContext(ctx, query, leagueID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var teams []string
+	for rows.Next() {
+		var teamName string
+		if err := rows.Scan(&teamName); err != nil {
+			return nil, err
+		}
+		teams = append(teams, teamName)
+	}
+
+	return teams, nil
+}
