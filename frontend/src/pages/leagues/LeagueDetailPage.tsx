@@ -497,10 +497,16 @@ export default function LeagueDetailPage() {
                       >
                         {team.name.charAt(0)}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <h4 className="text-white font-bold group-hover:text-neon transition-colors">
                           {team.name}
                         </h4>
+                        <Link
+                          to={`/leagues/${id}/teams/${encodeURIComponent(team.name)}/finance`}
+                          className="text-xs text-neon hover:text-neon-light mt-1 inline-block"
+                        >
+                          자금 현황 →
+                        </Link>
                       </div>
                     </div>
                   </div>

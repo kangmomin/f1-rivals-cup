@@ -47,6 +47,8 @@ func main() {
 	teamRepo := repository.NewTeamRepository(db)
 	newsRepo := repository.NewNewsRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
+	accountRepo := repository.NewAccountRepository(db)
+	transactionRepo := repository.NewTransactionRepository(db)
 
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(cfg.JWTSecret, cfg.JWTAccessExpiry, cfg.JWTRefreshExpiry)
@@ -62,9 +64,10 @@ func main() {
 	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo)
 	matchHandler := handler.NewMatchHandler(matchRepo, leagueRepo)
 	matchResultHandler := handler.NewMatchResultHandler(matchResultRepo, matchRepo, leagueRepo)
-	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo)
+	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo, accountRepo)
 	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo, aiService)
 	commentHandler := handler.NewCommentHandler(commentRepo)
+	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -160,6 +163,10 @@ func main() {
 	adminGroup.PUT("/news/:id/unpublish", newsHandler.Unpublish, custommiddleware.RequirePermission(auth.PermNewsPublish))
 	adminGroup.DELETE("/news/:id", newsHandler.Delete, custommiddleware.RequirePermission(auth.PermNewsDelete))
 
+	// Admin finance routes
+	adminGroup.PUT("/accounts/:id/balance", financeHandler.SetAccountBalance)
+	adminGroup.POST("/leagues/:id/transactions", financeHandler.CreateTransaction)
+
 	// Public league routes
 	leagueGroup := v1.Group("/leagues")
 	leagueGroup.GET("", leagueHandler.List)
@@ -168,6 +175,14 @@ func main() {
 	leagueGroup.GET("/:id/standings", matchResultHandler.Standings)
 	leagueGroup.GET("/:id/teams", teamHandler.List)
 	leagueGroup.GET("/:id/news", newsHandler.List)
+	leagueGroup.GET("/:id/accounts", financeHandler.ListAccounts)
+	leagueGroup.GET("/:id/transactions", financeHandler.ListTransactions)
+	leagueGroup.GET("/:id/finance/stats", financeHandler.GetFinanceStats)
+
+	// Public account routes
+	accountGroup := v1.Group("/accounts")
+	accountGroup.GET("/:id", financeHandler.GetAccount)
+	accountGroup.GET("/:id/transactions", financeHandler.ListAccountTransactions)
 
 	// Public news routes
 	newsGroup := v1.Group("/news")

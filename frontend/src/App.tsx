@@ -12,11 +12,13 @@ import AdminLayout from './pages/admin/AdminLayout'
 import DashboardPage from './pages/admin/DashboardPage'
 import UsersPage from './pages/admin/UsersPage'
 import AdminLeagueDetailPage from './pages/admin/LeagueDetailPage'
+import TeamDetailPage from './pages/admin/TeamDetailPage'
 import MatchesPage from './pages/admin/MatchesPage'
 import SettingsPage from './pages/admin/SettingsPage'
 import LeaguesPage from './pages/leagues/LeaguesPage'
 import LeagueDetailPage from './pages/leagues/LeagueDetailPage'
 import StandingsPage from './pages/leagues/StandingsPage'
+import TeamFinancePage from './pages/leagues/TeamFinancePage'
 import NewsListPage from './pages/news/NewsListPage'
 import NewsDetailPage from './pages/news/NewsDetailPage'
 import NewsEditorPage from './pages/news/NewsEditorPage'
@@ -180,6 +182,7 @@ function MainLayout() {
           <Route path="/leagues" element={<LeaguesPage />} />
           <Route path="/leagues/:id" element={<LeagueDetailPage />} />
           <Route path="/leagues/:id/standings" element={<StandingsPage />} />
+          <Route path="/leagues/:leagueId/teams/:teamName/finance" element={<TeamFinancePage />} />
           <Route path="/leagues/:leagueId/news" element={<NewsListPage />} />
           <Route path="/leagues/:leagueId/news/new" element={<NewsEditorPage />} />
           <Route path="/news/:id" element={<NewsDetailPage />} />
@@ -204,6 +207,7 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="leagues/:id" element={<AdminLeagueDetailPage />} />
+            <Route path="leagues/:leagueId/teams/:teamName" element={<TeamDetailPage />} />
             <Route path="matches" element={<MatchesPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

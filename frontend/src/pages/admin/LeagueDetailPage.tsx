@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { leagueService, League } from '../../services/league'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
 import { teamService, Team, CreateTeamRequest, OFFICIAL_F1_TEAMS } from '../../services/team'
 import { matchService, Match } from '../../services/match'
+import { financeService, Account, Transaction, FinanceStats } from '../../services/finance'
 import MatchResultsEditor from '../../components/match/MatchResultsEditor'
+import TransactionForm from '../../components/finance/TransactionForm'
+import TransactionHistory from '../../components/finance/TransactionHistory'
+import FinanceChart from '../../components/finance/FinanceChart'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: '준비중',
@@ -48,7 +52,7 @@ const MATCH_STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-loss/10 text-loss',
 }
 
-type TabType = 'info' | 'teams' | 'matches' | 'applications' | 'members'
+type TabType = 'info' | 'teams' | 'matches' | 'applications' | 'members' | 'finance'
 
 export default function LeagueDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -82,6 +86,13 @@ export default function LeagueDetailPage() {
   const [isLoadingMatches, setIsLoadingMatches] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [showResultsEditor, setShowResultsEditor] = useState(false)
+
+  // Finance states
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [financeStats, setFinanceStats] = useState<FinanceStats | null>(null)
+  const [isLoadingFinance, setIsLoadingFinance] = useState(false)
+  const [showTransactionForm, setShowTransactionForm] = useState(false)
 
   useEffect(() => {
     const fetchLeague = async () => {
@@ -167,6 +178,29 @@ export default function LeagueDetailPage() {
     }
     fetchMatches()
   }, [id, activeTab])
+
+  // Fetch finance data when tab is finance
+  useEffect(() => {
+    const fetchFinanceData = async () => {
+      if (activeTab !== 'finance' || !id) return
+      setIsLoadingFinance(true)
+      try {
+        const [accountsRes, transactionsRes, statsRes] = await Promise.all([
+          financeService.listAccounts(id),
+          financeService.listTransactions(id),
+          financeService.getFinanceStats(id),
+        ])
+        setAccounts(accountsRes.accounts)
+        setTransactions(transactionsRes.transactions)
+        setFinanceStats(statsRes)
+      } catch (err) {
+        console.error('Failed to fetch finance data:', err)
+      } finally {
+        setIsLoadingFinance(false)
+      }
+    }
+    fetchFinanceData()
+  }, [activeTab, id])
 
   const handleUpdateStatus = async (participantId: string, status: 'approved' | 'rejected') => {
     setProcessingId(participantId)
@@ -366,6 +400,7 @@ export default function LeagueDetailPage() {
     { key: 'matches' as TabType, label: '경기 일정' },
     { key: 'applications' as TabType, label: '참가 신청', badge: pendingCount > 0 ? pendingCount : undefined },
     { key: 'members' as TabType, label: '참여 인원' },
+    { key: 'finance' as TabType, label: '자금 관리' },
   ]
 
   return (
@@ -503,7 +538,12 @@ export default function LeagueDetailPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-white font-medium">{team.name}</h4>
+                            <Link
+                              to={`/admin/leagues/${id}/teams/${encodeURIComponent(team.name)}`}
+                              className="text-white font-medium hover:text-neon transition-colors"
+                            >
+                              {team.name}
+                            </Link>
                             {team.is_official && (
                               <span className="px-1.5 py-0.5 bg-racing/10 text-racing rounded text-xs">F1</span>
                             )}
@@ -784,6 +824,88 @@ export default function LeagueDetailPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'finance' && (
+          <div className="space-y-6">
+            {/* Header with transaction button */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-white">자금 관리</h3>
+              <button
+                onClick={() => setShowTransactionForm(true)}
+                className="btn-primary text-sm"
+              >
+                새 거래 생성
+              </button>
+            </div>
+
+            {isLoadingFinance ? (
+              <p className="text-text-secondary text-center py-8">로딩 중...</p>
+            ) : (
+              <>
+                {/* Finance Stats Chart */}
+                {financeStats && <FinanceChart stats={financeStats} />}
+
+                {/* Accounts List */}
+                <div className="bg-carbon-dark border border-steel rounded-xl p-5">
+                  <h4 className="text-sm font-medium text-text-secondary uppercase mb-4">계좌 목록</h4>
+                  <div className="space-y-2">
+                    {accounts.map((account) => (
+                      <div
+                        key={account.id}
+                        className="flex items-center justify-between p-3 bg-carbon rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            account.owner_type === 'system' ? 'bg-racing/10 text-racing' :
+                            account.owner_type === 'team' ? 'bg-neon/10 text-neon' :
+                            'bg-steel text-text-secondary'
+                          }`}>
+                            {account.owner_type === 'system' ? 'FIA' :
+                             account.owner_type === 'team' ? '팀' : '참가자'}
+                          </span>
+                          <span className="text-white font-medium">{account.owner_name}</span>
+                        </div>
+                        <span className={`font-bold ${account.balance >= 0 ? 'text-profit' : 'text-loss'}`}>
+                          {account.balance.toLocaleString('ko-KR')}원
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transaction History */}
+                <div className="bg-carbon-dark border border-steel rounded-xl p-5">
+                  <h4 className="text-sm font-medium text-text-secondary uppercase mb-4">최근 거래 내역</h4>
+                  <TransactionHistory transactions={transactions} />
+                </div>
+              </>
+            )}
+
+            {/* Transaction Form Modal */}
+            {showTransactionForm && (
+              <TransactionForm
+                leagueId={id!}
+                accounts={accounts}
+                onClose={() => setShowTransactionForm(false)}
+                onSuccess={() => {
+                  setShowTransactionForm(false)
+                  // Refresh finance data
+                  const fetchData = async () => {
+                    const [accountsRes, transactionsRes, statsRes] = await Promise.all([
+                      financeService.listAccounts(id!),
+                      financeService.listTransactions(id!),
+                      financeService.getFinanceStats(id!),
+                    ])
+                    setAccounts(accountsRes.accounts)
+                    setTransactions(transactionsRes.transactions)
+                    setFinanceStats(statsRes)
+                  }
+                  fetchData()
+                }}
+              />
             )}
           </div>
         )}

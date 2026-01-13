@@ -12,14 +12,16 @@ import (
 )
 
 type TeamHandler struct {
-	teamRepo   *repository.TeamRepository
-	leagueRepo *repository.LeagueRepository
+	teamRepo    *repository.TeamRepository
+	leagueRepo  *repository.LeagueRepository
+	accountRepo *repository.AccountRepository
 }
 
-func NewTeamHandler(teamRepo *repository.TeamRepository, leagueRepo *repository.LeagueRepository) *TeamHandler {
+func NewTeamHandler(teamRepo *repository.TeamRepository, leagueRepo *repository.LeagueRepository, accountRepo *repository.AccountRepository) *TeamHandler {
 	return &TeamHandler{
-		teamRepo:   teamRepo,
-		leagueRepo: leagueRepo,
+		teamRepo:    teamRepo,
+		leagueRepo:  leagueRepo,
+		accountRepo: accountRepo,
 	}
 }
 
@@ -134,6 +136,20 @@ func (h *TeamHandler) Create(c echo.Context) error {
 			Error:   "server_error",
 			Message: "팀 생성에 실패했습니다",
 		})
+	}
+
+	// 팀 계좌 자동 생성
+	if h.accountRepo != nil {
+		account := &model.Account{
+			LeagueID:  leagueID,
+			OwnerID:   team.ID,
+			OwnerType: model.OwnerTypeTeam,
+			Balance:   0,
+		}
+		if err := h.accountRepo.Create(ctx, account); err != nil {
+			slog.Error("Team.Create: failed to create team account", "error", err, "team_id", team.ID)
+			// 계좌 생성 실패해도 팀은 생성되었으므로 에러 반환하지 않음
+		}
 	}
 
 	return c.JSON(http.StatusCreated, team)
