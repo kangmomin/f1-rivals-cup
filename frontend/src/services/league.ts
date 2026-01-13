@@ -64,12 +64,12 @@ export const leagueService = {
     if (status) {
       params.append('status', status)
     }
-    const response = await api.get<ListLeaguesResponse>(`/admin/leagues?${params}`)
+    const response = await api.get<ListLeaguesResponse>(`/leagues?${params}`)
     return response.data
   },
 
   async get(id: string): Promise<League> {
-    const response = await api.get<League>(`/admin/leagues/${id}`)
+    const response = await api.get<League>(`/leagues/${id}`)
     return response.data
   },
 
