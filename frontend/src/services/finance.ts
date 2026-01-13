@@ -79,6 +79,7 @@ export const financeService = {
     amount: number
     category: string
     description?: string
+    use_balance?: boolean  // FIA 전용: true=잔액 지출(기본), false=비잔액 지출
   }) => {
     const response = await api.post<Transaction>(`/admin/leagues/${leagueId}/transactions`, data)
     return response.data
@@ -113,6 +114,12 @@ export const financeService = {
     const response = await api.get<{ transactions: Transaction[], total: number, balance: number }>(
       `/accounts/${accountId}/transactions`, { params }
     )
+    return response.data
+  },
+
+  // My Account (참가자 본인 계좌 조회 - 없으면 자동 생성)
+  getMyAccount: async (leagueId: string) => {
+    const response = await api.get<Account>(`/leagues/${leagueId}/my-account`)
     return response.data
   },
 

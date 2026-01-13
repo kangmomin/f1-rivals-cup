@@ -82,6 +82,37 @@ func (r *ParticipantRepository) GetByLeagueAndUser(ctx context.Context, leagueID
 	return participant, nil
 }
 
+// GetByID retrieves a participant by ID
+func (r *ParticipantRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.LeagueParticipant, error) {
+	query := `
+		SELECT id, league_id, user_id, status, roles, team_name, message, created_at, updated_at
+		FROM league_participants
+		WHERE id = $1
+	`
+
+	participant := &model.LeagueParticipant{}
+	err := r.db.Pool.QueryRowContext(ctx, query, id).Scan(
+		&participant.ID,
+		&participant.LeagueID,
+		&participant.UserID,
+		&participant.Status,
+		&participant.Roles,
+		&participant.TeamName,
+		&participant.Message,
+		&participant.CreatedAt,
+		&participant.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrParticipantNotFound
+		}
+		return nil, err
+	}
+
+	return participant, nil
+}
+
 // ListByLeague retrieves all participants for a league
 func (r *ParticipantRepository) ListByLeague(ctx context.Context, leagueID uuid.UUID, status string) ([]*model.LeagueParticipant, error) {
 	query := `
@@ -254,6 +285,7 @@ func (r *ParticipantRepository) UpdateTeam(ctx context.Context, id uuid.UUID, te
 }
 
 // GetDirectorTeams returns the team names where the user is an approved director in a league
+// Deprecated: Use GetDirectorTeamIDs instead for more robust authorization
 func (r *ParticipantRepository) GetDirectorTeams(ctx context.Context, leagueID, userID uuid.UUID) ([]string, error) {
 	query := `
 		SELECT team_name
@@ -281,4 +313,35 @@ func (r *ParticipantRepository) GetDirectorTeams(ctx context.Context, leagueID, 
 	}
 
 	return teams, nil
+}
+
+// GetDirectorTeamIDs returns the team IDs where the user is an approved director in a league
+func (r *ParticipantRepository) GetDirectorTeamIDs(ctx context.Context, leagueID, userID uuid.UUID) ([]uuid.UUID, error) {
+	query := `
+		SELECT t.id
+		FROM league_participants lp
+		JOIN teams t ON t.league_id = lp.league_id AND t.name = lp.team_name
+		WHERE lp.league_id = $1
+		AND lp.user_id = $2
+		AND lp.status = 'approved'
+		AND 'director' = ANY(lp.roles)
+		AND lp.team_name IS NOT NULL
+	`
+
+	rows, err := r.db.Pool.QueryContext(ctx, query, leagueID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var teamIDs []uuid.UUID
+	for rows.Next() {
+		var teamID uuid.UUID
+		if err := rows.Scan(&teamID); err != nil {
+			return nil, err
+		}
+		teamIDs = append(teamIDs, teamID)
+	}
+
+	return teamIDs, nil
 }

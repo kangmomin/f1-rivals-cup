@@ -228,3 +228,32 @@ func (r *AccountRepository) GetByOwner(ctx context.Context, leagueID, ownerID uu
 
 	return account, nil
 }
+
+// EnsureParticipantAccount gets or creates a participant account
+// This is idempotent and handles the case where account creation failed during approval
+func (r *AccountRepository) EnsureParticipantAccount(ctx context.Context, leagueID, participantID uuid.UUID) (*model.Account, error) {
+	// Try to get existing account
+	account, err := r.GetByOwner(ctx, leagueID, participantID, model.OwnerTypeParticipant)
+	if err == nil {
+		// GetByOwner doesn't include owner_name, so fetch complete account info
+		return r.GetByID(ctx, account.ID)
+	}
+	if !errors.Is(err, ErrAccountNotFound) {
+		return nil, err
+	}
+
+	// Create new account for participant
+	newAccount := &model.Account{
+		LeagueID:  leagueID,
+		OwnerID:   participantID,
+		OwnerType: model.OwnerTypeParticipant,
+		Balance:   0,
+	}
+
+	if err := r.Create(ctx, newAccount); err != nil {
+		return nil, err
+	}
+
+	// Fetch complete account info including owner_name
+	return r.GetByID(ctx, newAccount.ID)
+}

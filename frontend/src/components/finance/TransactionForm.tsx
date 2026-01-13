@@ -27,8 +27,13 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('transfer')
   const [description, setDescription] = useState('')
+  const [useBalance, setUseBalance] = useState(true)  // FIA 전용: true=잔액 지출, false=비잔액 지출
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 선택된 보내는 계좌가 FIA(system)인지 확인
+  const selectedFromAccount = accounts.find(a => a.id === fromAccountId)
+  const isFiaAccount = selectedFromAccount?.owner_type === 'system'
 
   const formatNumber = (value: string): string => {
     const numericValue = value.replace(/[^0-9]/g, '')
@@ -69,18 +74,25 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
 
     setIsSubmitting(true)
     try {
-      const transactionData = {
-        from_account_id: fromAccountId,
-        to_account_id: toAccountId,
-        amount: parsedAmount,
-        category,
-        description: description || undefined,
-      }
-
       if (directorMode) {
-        await financeService.createTransactionByDirector(leagueId, transactionData)
+        // 감독 모드: 비잔액 지출 옵션 없음
+        await financeService.createTransactionByDirector(leagueId, {
+          from_account_id: fromAccountId,
+          to_account_id: toAccountId,
+          amount: parsedAmount,
+          category,
+          description: description || undefined,
+        })
       } else {
-        await financeService.createTransaction(leagueId, transactionData)
+        // Admin 모드: FIA 계좌인 경우 use_balance 옵션 전달
+        await financeService.createTransaction(leagueId, {
+          from_account_id: fromAccountId,
+          to_account_id: toAccountId,
+          amount: parsedAmount,
+          category,
+          description: description || undefined,
+          use_balance: isFiaAccount ? useBalance : undefined,
+        })
       }
       onSuccess()
       onClose()
@@ -169,6 +181,40 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">원</span>
             </div>
           </div>
+
+          {/* FIA Balance Option - Admin 모드이고 FIA 계좌 선택 시에만 표시 */}
+          {!directorMode && isFiaAccount && (
+            <div className="bg-carbon border border-steel rounded-lg p-3">
+              <label className="block text-sm text-text-secondary mb-2">지출 방식</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="useBalance"
+                    checked={useBalance}
+                    onChange={() => setUseBalance(true)}
+                    className="w-4 h-4 accent-neon"
+                  />
+                  <span className="text-sm text-white">잔액 지출</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="useBalance"
+                    checked={!useBalance}
+                    onChange={() => setUseBalance(false)}
+                    className="w-4 h-4 accent-neon"
+                  />
+                  <span className="text-sm text-white">비잔액 지출</span>
+                </label>
+              </div>
+              <p className="text-xs text-text-secondary mt-2">
+                {useBalance
+                  ? 'FIA 잔액에서 차감됩니다. 잔액 부족 시 실패합니다.'
+                  : 'FIA 잔액 변동 없이 화폐를 발행합니다.'}
+              </p>
+            </div>
+          )}
 
           {/* Category */}
           <div>

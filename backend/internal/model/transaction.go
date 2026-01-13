@@ -38,6 +38,7 @@ type CreateTransactionRequest struct {
 	Amount        int64               `json:"amount" validate:"required,gt=0"`
 	Category      TransactionCategory `json:"category" validate:"required"`
 	Description   *string             `json:"description,omitempty"`
+	UseBalance    *bool               `json:"use_balance,omitempty"` // FIA 전용: nil/true=잔액 지출, false=비잔액 지출
 }
 
 type ListTransactionsResponse struct {

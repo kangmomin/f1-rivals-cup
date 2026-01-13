@@ -61,7 +61,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(userRepo, jwtService)
 	adminHandler := handler.NewAdminHandler(userRepo, permissionHistoryRepo)
 	leagueHandler := handler.NewLeagueHandler(leagueRepo)
-	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo)
+	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo, accountRepo)
 	matchHandler := handler.NewMatchHandler(matchRepo, leagueRepo)
 	matchResultHandler := handler.NewMatchResultHandler(matchResultRepo, matchRepo, leagueRepo)
 	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo, accountRepo)
@@ -214,6 +214,7 @@ func main() {
 	protectedLeagueGroup.POST("/:id/join", participantHandler.Join)
 	protectedLeagueGroup.DELETE("/:id/join", participantHandler.Cancel)
 	protectedLeagueGroup.POST("/:id/transactions", financeHandler.CreateTransactionByDirector)
+	protectedLeagueGroup.GET("/:id/my-account", financeHandler.GetMyAccount)
 
 	// User profile routes (protected)
 	meGroup := v1.Group("/me")
