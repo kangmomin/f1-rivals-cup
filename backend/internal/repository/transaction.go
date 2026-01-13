@@ -25,28 +25,31 @@ func NewTransactionRepository(db *database.DB) *TransactionRepository {
 }
 
 // Create creates a new transaction and updates account balances atomically
-func (r *TransactionRepository) Create(ctx context.Context, tx *model.Transaction) error {
+// useBalance: true=잔액 지출(기본), false=비잔액 지출(FIA만, 잔액 차감 없이 화폐 발행)
+func (r *TransactionRepository) Create(ctx context.Context, tx *model.Transaction, useBalance bool) error {
 	dbTx, err := r.db.Pool.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer dbTx.Rollback()
 
-	// Lock and update from account (deduct)
-	// FIA(system) 계좌는 무한 잔액이므로 잔액 검사 생략
-	updateFromQuery := `
-		UPDATE accounts
-		SET balance = balance - $2, updated_at = NOW()
-		WHERE id = $1 AND (owner_type = 'system' OR balance >= $2)
-		RETURNING balance
-	`
-	var newFromBalance int64
-	if err := dbTx.QueryRowContext(ctx, updateFromQuery, tx.FromAccountID, tx.Amount).Scan(&newFromBalance); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrInsufficientBalance
+	if useBalance {
+		// 잔액 지출: from 계좌에서 잔액 차감 (잔액 검사 포함)
+		updateFromQuery := `
+			UPDATE accounts
+			SET balance = balance - $2, updated_at = NOW()
+			WHERE id = $1 AND balance >= $2
+			RETURNING balance
+		`
+		var newFromBalance int64
+		if err := dbTx.QueryRowContext(ctx, updateFromQuery, tx.FromAccountID, tx.Amount).Scan(&newFromBalance); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrInsufficientBalance
+			}
+			return err
 		}
-		return err
 	}
+	// 비잔액 지출(useBalance=false): from 계좌 잔액 변동 없음 (화폐 발행 개념)
 
 	// Lock and update to account (add)
 	updateToQuery := `

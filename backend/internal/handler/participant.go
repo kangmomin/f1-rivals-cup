@@ -14,12 +14,14 @@ import (
 type ParticipantHandler struct {
 	participantRepo *repository.ParticipantRepository
 	leagueRepo      *repository.LeagueRepository
+	accountRepo     *repository.AccountRepository
 }
 
-func NewParticipantHandler(participantRepo *repository.ParticipantRepository, leagueRepo *repository.LeagueRepository) *ParticipantHandler {
+func NewParticipantHandler(participantRepo *repository.ParticipantRepository, leagueRepo *repository.LeagueRepository, accountRepo *repository.AccountRepository) *ParticipantHandler {
 	return &ParticipantHandler{
 		participantRepo: participantRepo,
 		leagueRepo:      leagueRepo,
+		accountRepo:     accountRepo,
 	}
 }
 
@@ -341,6 +343,22 @@ func (h *ParticipantHandler) UpdateStatus(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
+	// Get participant to check current status and get league ID
+	participant, err := h.participantRepo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrParticipantNotFound) {
+			return c.JSON(http.StatusNotFound, model.ErrorResponse{
+				Error:   "not_found",
+				Message: "참가자를 찾을 수 없습니다",
+			})
+		}
+		slog.Error("Participant.UpdateStatus: failed to get participant", "error", err, "participant_id", id)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "참가자 조회에 실패했습니다",
+		})
+	}
+
 	if err := h.participantRepo.UpdateStatus(ctx, id, req.Status); err != nil {
 		if errors.Is(err, repository.ErrParticipantNotFound) {
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
@@ -353,6 +371,29 @@ func (h *ParticipantHandler) UpdateStatus(c echo.Context) error {
 			Error:   "server_error",
 			Message: "상태 변경에 실패했습니다",
 		})
+	}
+
+	// Create participant account when approved (if not already exists)
+	if req.Status == model.ParticipantStatusApproved && participant.Status != model.ParticipantStatusApproved {
+		// Check if account already exists
+		_, err := h.accountRepo.GetByOwner(ctx, participant.LeagueID, participant.ID, model.OwnerTypeParticipant)
+		if errors.Is(err, repository.ErrAccountNotFound) {
+			// Create new account for participant
+			account := &model.Account{
+				LeagueID:  participant.LeagueID,
+				OwnerID:   participant.ID,
+				OwnerType: model.OwnerTypeParticipant,
+				Balance:   0,
+			}
+			if err := h.accountRepo.Create(ctx, account); err != nil {
+				slog.Error("Participant.UpdateStatus: failed to create participant account", "error", err, "participant_id", id)
+				// Don't fail the request, account creation is secondary
+			} else {
+				slog.Info("Participant.UpdateStatus: created participant account", "participant_id", id, "account_id", account.ID)
+			}
+		} else if err != nil {
+			slog.Error("Participant.UpdateStatus: failed to check existing account", "error", err, "participant_id", id)
+		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{

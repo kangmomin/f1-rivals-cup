@@ -19,6 +19,7 @@ import LeaguesPage from './pages/leagues/LeaguesPage'
 import LeagueDetailPage from './pages/leagues/LeagueDetailPage'
 import StandingsPage from './pages/leagues/StandingsPage'
 import TeamFinancePage from './pages/leagues/TeamFinancePage'
+import ParticipantFinancePage from './pages/leagues/ParticipantFinancePage'
 import NewsListPage from './pages/news/NewsListPage'
 import NewsDetailPage from './pages/news/NewsDetailPage'
 import NewsEditorPage from './pages/news/NewsEditorPage'
@@ -183,6 +184,7 @@ function MainLayout() {
           <Route path="/leagues/:id" element={<LeagueDetailPage />} />
           <Route path="/leagues/:id/standings" element={<StandingsPage />} />
           <Route path="/leagues/:leagueId/teams/:teamName/finance" element={<TeamFinancePage />} />
+          <Route path="/leagues/:leagueId/my-finance" element={<ParticipantFinancePage />} />
           <Route path="/leagues/:leagueId/news" element={<NewsListPage />} />
           <Route path="/leagues/:leagueId/news/new" element={<NewsEditorPage />} />
           <Route path="/news/:id" element={<NewsDetailPage />} />

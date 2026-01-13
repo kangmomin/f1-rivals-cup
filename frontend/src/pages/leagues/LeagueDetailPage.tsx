@@ -5,7 +5,11 @@ import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } f
 import { teamService, Team } from '../../services/team'
 import { matchService, Match } from '../../services/match'
 import { newsService } from '../../services/news'
+import { financeService, Account, Transaction, FinanceStats } from '../../services/finance'
 import { useAuth } from '../../contexts/AuthContext'
+import TransactionHistory from '../../components/finance/TransactionHistory'
+import TransactionForm from '../../components/finance/TransactionForm'
+import FinanceChart from '../../components/finance/FinanceChart'
 
 const ALL_ROLES: ParticipantRole[] = ['director', 'player', 'reserve', 'engineer']
 
@@ -25,7 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-loss/10 text-loss border border-loss/30',
 }
 
-type TabType = 'info' | 'schedule' | 'teams' | 'members'
+type TabType = 'info' | 'schedule' | 'teams' | 'members' | 'finance'
 
 const PARTICIPANT_STATUS_LABELS: Record<string, string> = {
   pending: '승인 대기중',
@@ -64,6 +68,14 @@ export default function LeagueDetailPage() {
 
   // News notification state
   const [unreadNewsCount, setUnreadNewsCount] = useState(0)
+
+  // Finance state
+  const [myAccount, setMyAccount] = useState<Account | null>(null)
+  const [allAccounts, setAllAccounts] = useState<Account[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [financeStats, setFinanceStats] = useState<FinanceStats | null>(null)
+  const [isLoadingFinance, setIsLoadingFinance] = useState(false)
+  const [showTransactionForm, setShowTransactionForm] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -159,6 +171,46 @@ export default function LeagueDetailPage() {
     fetchMembers()
   }, [id, activeTab])
 
+  // Fetch finance data when finance tab is active
+  const fetchFinanceData = async () => {
+    if (!id || activeTab !== 'finance') return
+
+    setIsLoadingFinance(true)
+    try {
+      // 로그인된 승인 참가자인 경우 내 계좌도 조회
+      const isApprovedParticipant = isAuthenticated && participant?.status === 'approved'
+
+      const [accountsRes, statsRes] = await Promise.all([
+        financeService.listAccounts(id),
+        financeService.getFinanceStats(id),
+      ])
+
+      setAllAccounts(accountsRes.accounts || [])
+      setFinanceStats(statsRes)
+
+      if (isApprovedParticipant) {
+        try {
+          const account = await financeService.getMyAccount(id)
+          setMyAccount(account)
+          const txRes = await financeService.getAccountTransactions(account.id)
+          setTransactions(txRes.transactions || [])
+        } catch {
+          // 계좌가 없는 경우 무시
+          setMyAccount(null)
+          setTransactions([])
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch finance data:', err)
+    } finally {
+      setIsLoadingFinance(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchFinanceData()
+  }, [id, activeTab, isAuthenticated, participant?.status])
+
   const handleJoinClick = () => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/leagues/${id}` } })
@@ -251,6 +303,7 @@ export default function LeagueDetailPage() {
     { key: 'schedule' as TabType, label: '일정' },
     { key: 'teams' as TabType, label: '참여 팀' },
     { key: 'members' as TabType, label: '참여 인원' },
+    { key: 'finance' as TabType, label: '자금 관리' },
   ]
 
   return (
@@ -297,6 +350,17 @@ export default function LeagueDetailPage() {
                     }`}>
                       {PARTICIPANT_STATUS_LABELS[participant.status]}
                     </span>
+                    {participant.status === 'approved' && (
+                      <Link
+                        to={`/leagues/${id}/my-finance`}
+                        className="btn-secondary text-sm flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        내 자금
+                      </Link>
+                    )}
                     {participant.status === 'pending' && (
                       <button
                         onClick={handleCancelParticipation}
@@ -560,8 +624,99 @@ export default function LeagueDetailPage() {
               )}
             </div>
           )}
+
+          {/* 자금 관리 탭 */}
+          {activeTab === 'finance' && (
+            <div className="space-y-6">
+              {isLoadingFinance ? (
+                <div className="p-8 text-center text-text-secondary">로딩 중...</div>
+              ) : (
+                <>
+                  {/* 내 계좌 정보 (승인된 참가자만) */}
+                  {isAuthenticated && participant?.status === 'approved' && myAccount && (
+                    <div className="bg-carbon-dark border border-steel rounded-xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <span className="w-1 h-5 bg-neon rounded-full"></span>
+                          내 자금
+                        </h3>
+                        <button
+                          onClick={() => setShowTransactionForm(true)}
+                          className="btn-primary text-sm flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          거래 생성
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm">현재 잔액</p>
+                          <p className={`text-3xl font-bold ${myAccount.balance >= 0 ? 'text-profit' : 'text-loss'}`}>
+                            {myAccount.balance.toLocaleString('ko-KR')}원
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 리그 자금 통계 */}
+                  {financeStats && (
+                    <div className="bg-carbon-dark border border-steel rounded-xl p-6">
+                      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span className="w-1 h-5 bg-racing rounded-full"></span>
+                        리그 자금 현황
+                      </h3>
+                      <FinanceChart stats={financeStats} />
+                    </div>
+                  )}
+
+                  {/* 내 거래 내역 (승인된 참가자만) */}
+                  {isAuthenticated && participant?.status === 'approved' && myAccount && (
+                    <div className="bg-carbon-dark border border-steel rounded-xl p-6">
+                      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span className="w-1 h-5 bg-profit rounded-full"></span>
+                        내 거래 내역
+                      </h3>
+                      {transactions.length === 0 ? (
+                        <p className="text-text-secondary text-center py-8">거래 내역이 없습니다</p>
+                      ) : (
+                        <TransactionHistory transactions={transactions} currentAccountId={myAccount.id} />
+                      )}
+                    </div>
+                  )}
+
+                  {/* 비로그인 또는 비승인 사용자 안내 */}
+                  {(!isAuthenticated || participant?.status !== 'approved') && (
+                    <div className="bg-carbon-dark border border-steel rounded-xl p-6 text-center">
+                      <p className="text-text-secondary">
+                        {!isAuthenticated
+                          ? '로그인하면 개인 자금 현황을 확인할 수 있습니다.'
+                          : '리그 참가가 승인되면 개인 자금 현황을 확인할 수 있습니다.'}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* 거래 생성 모달 */}
+      {showTransactionForm && id && myAccount && (
+        <TransactionForm
+          leagueId={id}
+          accounts={allAccounts}
+          onClose={() => setShowTransactionForm(false)}
+          onSuccess={() => fetchFinanceData()}
+          directorMode={{
+            fromAccountId: myAccount.id,
+            fromAccountName: `${myAccount.owner_name} (${myAccount.balance.toLocaleString('ko-KR')}원)`,
+          }}
+        />
+      )}
 
       {/* 참가 신청 모달 */}
       {showJoinModal && (
