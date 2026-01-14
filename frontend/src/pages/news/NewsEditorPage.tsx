@@ -29,7 +29,7 @@ export default function NewsEditorPage() {
   const [aiInput, setAIInput] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [aiError, setAIError] = useState<string | null>(null)
-  const [generatedContent, setGeneratedContent] = useState<string | null>(null)
+  const [generatedContent, setGeneratedContent] = useState<{ title: string; description: string; news_provider: string } | null>(null)
   const [insertMode, setInsertMode] = useState<InsertMode>('replace')
 
   // Auto-save 관련
@@ -188,7 +188,11 @@ export default function NewsEditorPage() {
 
     try {
       const result = await newsService.generateContent(aiInput.trim())
-      setGeneratedContent(result.content)
+      setGeneratedContent({
+        title: result.title,
+        description: result.description,
+        news_provider: result.news_provider,
+      })
     } catch (err: any) {
       const message = err.response?.data?.message || 'AI 콘텐츠 생성에 실패했습니다'
       setAIError(message)
@@ -201,10 +205,14 @@ export default function NewsEditorPage() {
   const handleInsertContent = () => {
     if (!generatedContent) return
 
+    // 제목 설정 (항상 대체)
+    setTitle(generatedContent.title)
+
+    // 본문 설정
     if (insertMode === 'replace') {
-      setContent(generatedContent)
+      setContent(generatedContent.description)
     } else {
-      setContent(prev => prev ? `${prev}\n\n${generatedContent}` : generatedContent)
+      setContent(prev => prev ? `${prev}\n\n${generatedContent.description}` : generatedContent.description)
     }
 
     // 모달 닫기 및 상태 초기화
@@ -439,36 +447,67 @@ export default function NewsEditorPage() {
                   )}
 
                   {/* 팁 */}
-                  <div className="mt-4 bg-carbon/50 border border-steel/50 rounded-lg p-4">
-                    <p className="text-sm text-text-secondary">
-                      <span className="text-neon font-medium">Tip:</span> 구체적인 정보를 많이 포함할수록 더 좋은 뉴스 기사가 생성됩니다.
-                      선수 이름, 순위, 기록, 특이사항 등을 자유롭게 입력해보세요.
-                    </p>
+                  <div className="mt-4 bg-carbon/50 border border-steel/50 rounded-lg p-4 space-y-2">
+                    <p className="text-sm font-medium text-neon">📝 팁</p>
+                    <ul className="text-sm text-text-secondary space-y-1.5">
+                      <li>
+                        <span className="text-white font-medium">말머리 지정:</span> 입력할 때 "[속보]로 해줘" 혹은 "[이슈]로 써줘"라고 덧붙이면 더 정확한 톤을 얻을 수 있습니다.
+                      </li>
+                      <li>
+                        <span className="text-white font-medium">서명 변경:</span> 원하는 언론사 이름(예: 본인의 닉네임+뉴스)이 있다면 입력 시 같이 알려주세요.
+                      </li>
+                      <li>
+                        <span className="text-white font-medium">상세 정보:</span> 선수 이름, 금액, 순위, 기록 등 구체적인 정보를 포함할수록 더 좋은 기사가 생성됩니다.
+                      </li>
+                    </ul>
                   </div>
                 </>
               ) : (
                 <>
                   {/* 생성된 콘텐츠 미리보기 */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-white mb-2">
-                      생성된 뉴스 내용
-                    </label>
-                    <div className="bg-carbon border border-steel rounded-lg p-4 max-h-64 overflow-y-auto">
-                      <div className="prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown
-                          components={{
-                            h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-4 mb-2">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-lg font-bold text-white mt-3 mb-2">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-base font-bold text-white mt-2 mb-1">{children}</h3>,
-                            p: ({ children }) => <p className="text-text-secondary leading-relaxed mb-3">{children}</p>,
-                            ul: ({ children }) => <ul className="list-disc list-inside text-text-secondary mb-3 space-y-1">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal list-inside text-text-secondary mb-3 space-y-1">{children}</ol>,
-                            li: ({ children }) => <li className="text-text-secondary">{children}</li>,
-                            strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>,
-                          }}
-                        >
-                          {generatedContent}
-                        </ReactMarkdown>
+                  <div className="mb-4 space-y-4">
+                    {/* 제목 */}
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        제목
+                      </label>
+                      <div className="bg-carbon border border-steel rounded-lg p-4">
+                        <p className="text-xl font-bold text-white">{generatedContent.title}</p>
+                      </div>
+                    </div>
+
+                    {/* 본문 */}
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        본문
+                      </label>
+                      <div className="bg-carbon border border-steel rounded-lg p-4 max-h-48 overflow-y-auto">
+                        <div className="prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-4 mb-2">{children}</h1>,
+                              h2: ({ children }) => <h2 className="text-lg font-bold text-white mt-3 mb-2">{children}</h2>,
+                              h3: ({ children }) => <h3 className="text-base font-bold text-white mt-2 mb-1">{children}</h3>,
+                              p: ({ children }) => <p className="text-text-secondary leading-relaxed mb-3">{children}</p>,
+                              ul: ({ children }) => <ul className="list-disc list-inside text-text-secondary mb-3 space-y-1">{children}</ul>,
+                              ol: ({ children }) => <ol className="list-decimal list-inside text-text-secondary mb-3 space-y-1">{children}</ol>,
+                              li: ({ children }) => <li className="text-text-secondary">{children}</li>,
+                              strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>,
+                            }}
+                          >
+                            {generatedContent.description}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 뉴스 제공처 */}
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        뉴스 제공처
+                      </label>
+                      <div className="bg-carbon border border-steel rounded-lg p-3">
+                        <p className="text-sm text-text-secondary">{generatedContent.news_provider}</p>
                       </div>
                     </div>
                   </div>
@@ -477,7 +516,7 @@ export default function NewsEditorPage() {
                   {content.trim() && (
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-white mb-2">
-                        삽입 방식
+                        본문 삽입 방식
                       </label>
                       <div className="flex gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">

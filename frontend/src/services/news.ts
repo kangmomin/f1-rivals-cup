@@ -155,8 +155,8 @@ export const newsService = {
   },
 
   // AI 뉴스 콘텐츠 생성
-  async generateContent(input: string): Promise<{ content: string }> {
-    const response = await api.post<{ content: string }>('/admin/news/generate', { input })
+  async generateContent(input: string): Promise<{ title: string; description: string; news_provider: string }> {
+    const response = await api.post<{ title: string; description: string; news_provider: string }>('/admin/news/generate', { input })
     return response.data
   },
 }

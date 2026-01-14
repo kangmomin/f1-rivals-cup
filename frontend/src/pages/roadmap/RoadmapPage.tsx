@@ -27,8 +27,7 @@ const roadmapItems: RoadmapItem[] = [
     id: '3',
     title: '뉴스 AI 작성 서포트',
     description: 'AI를 활용하여 경기 결과, 선수 정보 등을 입력하면 자동으로 뉴스 기사를 생성해주는 기능',
-    status: 'in_progress',
-    quarter: '2026 Q1',
+    status: 'completed',
   },
   {
     id: '4',
