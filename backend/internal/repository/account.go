@@ -230,30 +230,25 @@ func (r *AccountRepository) GetByOwner(ctx context.Context, leagueID, ownerID uu
 }
 
 // EnsureParticipantAccount gets or creates a participant account
-// This is idempotent and handles the case where account creation failed during approval
+// This is idempotent and handles race conditions with ON CONFLICT
 func (r *AccountRepository) EnsureParticipantAccount(ctx context.Context, leagueID, participantID uuid.UUID) (*model.Account, error) {
-	// Try to get existing account
+	// Use INSERT ... ON CONFLICT to handle race conditions atomically
+	query := `
+		INSERT INTO accounts (league_id, owner_id, owner_type, balance)
+		VALUES ($1, $2, $3, 0)
+		ON CONFLICT (league_id, owner_id, owner_type) DO NOTHING
+	`
+	_, err := r.db.Pool.ExecContext(ctx, query, leagueID, participantID, model.OwnerTypeParticipant)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the account (either newly created or existing) with owner_name
 	account, err := r.GetByOwner(ctx, leagueID, participantID, model.OwnerTypeParticipant)
-	if err == nil {
-		// GetByOwner doesn't include owner_name, so fetch complete account info
-		return r.GetByID(ctx, account.ID)
-	}
-	if !errors.Is(err, ErrAccountNotFound) {
+	if err != nil {
 		return nil, err
 	}
 
-	// Create new account for participant
-	newAccount := &model.Account{
-		LeagueID:  leagueID,
-		OwnerID:   participantID,
-		OwnerType: model.OwnerTypeParticipant,
-		Balance:   0,
-	}
-
-	if err := r.Create(ctx, newAccount); err != nil {
-		return nil, err
-	}
-
-	// Fetch complete account info including owner_name
-	return r.GetByID(ctx, newAccount.ID)
+	// GetByOwner doesn't include owner_name, so fetch complete account info
+	return r.GetByID(ctx, account.ID)
 }
