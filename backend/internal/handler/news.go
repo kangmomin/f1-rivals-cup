@@ -604,6 +604,13 @@ func (h *NewsHandler) GenerateContent(c echo.Context) error {
 				Message: "AI 서비스 요청이 잘못되었습니다",
 			})
 		}
+		// Handle invalid JSON response
+		if errors.Is(err, service.ErrInvalidJSON) {
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "generation_failed",
+				Message: "AI 응답을 처리하는데 실패했습니다. 다시 시도해주세요",
+			})
+		}
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "콘텐츠 생성 중 오류가 발생했습니다",
@@ -611,6 +618,8 @@ func (h *NewsHandler) GenerateContent(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, model.GenerateNewsContentResponse{
-		Content: content,
+		Title:        content.Title,
+		Description:  content.Description,
+		NewsProvider: content.NewsProvider,
 	})
 }

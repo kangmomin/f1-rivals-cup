@@ -49,5 +49,7 @@ type GenerateNewsContentRequest struct {
 
 // GenerateNewsContentResponse represents the response for AI-generated news content
 type GenerateNewsContentResponse struct {
-	Content string `json:"content"`
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	NewsProvider string `json:"news_provider"`
 }
