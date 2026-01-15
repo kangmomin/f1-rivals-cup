@@ -2,11 +2,21 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
 
+// 메모리에 토큰 저장
+let accessToken: string | null = null
+
+export const setAccessToken = (token: string | null) => {
+  accessToken = token
+}
+
+export const getAccessToken = () => accessToken
+
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Cookie 자동 포함
 })
 
 let isRefreshing = false
@@ -28,9 +38,8 @@ const processQueue = (error: Error | null) => {
 
 // Request interceptor for auth token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
   return config
 })
@@ -58,30 +67,25 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (!refreshToken) {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-
       try {
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        })
+        // refresh_token은 HttpOnly Cookie로 자동 전송됨
+        // accessToken이 없어도 (페이지 리로드 등) refresh 시도
+        const response = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
+          }
+        )
 
-        const { access_token, refresh_token } = response.data
-        localStorage.setItem('accessToken', access_token)
-        localStorage.setItem('refreshToken', refresh_token)
+        const { access_token } = response.data
+        setAccessToken(access_token)
 
         processQueue(null)
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError as Error)
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
+        setAccessToken(null)
         localStorage.removeItem('user')
         window.location.href = '/login'
         return Promise.reject(refreshError)

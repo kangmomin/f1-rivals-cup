@@ -1,4 +1,4 @@
-import api from './api'
+import api, { setAccessToken } from './api'
 
 export type UserRole = 'USER' | 'STAFF' | 'ADMIN'
 
@@ -55,26 +55,18 @@ export const authService = {
   async login(data: LoginRequest): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/auth/login', data)
 
-    // Store tokens
-    localStorage.setItem('accessToken', response.data.access_token)
-    localStorage.setItem('refreshToken', response.data.refresh_token)
+    // 메모리에 accessToken 저장
+    setAccessToken(response.data.access_token)
 
     return response.data
   },
 
   async refreshToken(): Promise<RefreshTokenResponse> {
-    const refreshToken = localStorage.getItem('refreshToken')
-    if (!refreshToken) {
-      throw new Error('No refresh token available')
-    }
+    // refresh_token은 Cookie로 자동 전송됨
+    const response = await api.post<RefreshTokenResponse>('/auth/refresh', {})
 
-    const response = await api.post<RefreshTokenResponse>('/auth/refresh', {
-      refresh_token: refreshToken,
-    })
-
-    // Update stored tokens
-    localStorage.setItem('accessToken', response.data.access_token)
-    localStorage.setItem('refreshToken', response.data.refresh_token)
+    // 메모리에 새 accessToken 저장
+    setAccessToken(response.data.access_token)
 
     return response.data
   },
@@ -85,22 +77,19 @@ export const authService = {
     } catch {
       // Ignore errors, proceed with local logout
     } finally {
+      // 메모리에서 accessToken 제거
+      setAccessToken(null)
+      // localStorage에서 user 정보 및 레거시 토큰 제거
+      localStorage.removeItem('user')
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
     }
   },
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('accessToken')
-  },
-
-  getAccessToken(): string | null {
-    return localStorage.getItem('accessToken')
-  },
-
-  getRefreshToken(): string | null {
-    return localStorage.getItem('refreshToken')
+    // 메모리의 accessToken 확인은 getAccessToken 사용
+    // 하지만 AuthContext에서 관리하므로 여기서는 간단히 처리
+    return false // AuthContext에서 관리
   },
 
   async requestPasswordReset(email: string): Promise<{ message: string }> {

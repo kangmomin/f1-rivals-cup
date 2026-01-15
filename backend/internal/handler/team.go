@@ -6,22 +6,18 @@ import (
 	"net/http"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
-	"github.com/f1-rivals-cup/backend/internal/repository"
+	"github.com/f1-rivals-cup/backend/internal/service"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
 type TeamHandler struct {
-	teamRepo    *repository.TeamRepository
-	leagueRepo  *repository.LeagueRepository
-	accountRepo *repository.AccountRepository
+	teamService *service.TeamService
 }
 
-func NewTeamHandler(teamRepo *repository.TeamRepository, leagueRepo *repository.LeagueRepository, accountRepo *repository.AccountRepository) *TeamHandler {
+func NewTeamHandler(teamService *service.TeamService) *TeamHandler {
 	return &TeamHandler{
-		teamRepo:    teamRepo,
-		leagueRepo:  leagueRepo,
-		accountRepo: accountRepo,
+		teamService: teamService,
 	}
 }
 
@@ -38,33 +34,19 @@ func (h *TeamHandler) List(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	// Check if league exists
-	_, err = h.leagueRepo.GetByID(ctx, leagueID)
+	teams, err := h.teamService.List(ctx, leagueID)
 	if err != nil {
-		if errors.Is(err, repository.ErrLeagueNotFound) {
+		if errors.Is(err, service.ErrLeagueNotFound) {
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
-		slog.Error("Team.List: failed to get league", "error", err, "league_id", leagueID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "리그 정보를 불러오는데 실패했습니다",
-		})
-	}
-
-	teams, err := h.teamRepo.ListByLeague(ctx, leagueID)
-	if err != nil {
 		slog.Error("Team.List: failed to list teams", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 목록을 불러오는데 실패했습니다",
 		})
-	}
-
-	if teams == nil {
-		teams = []*model.Team{}
 	}
 
 	return c.JSON(http.StatusOK, model.ListTeamsResponse{
@@ -92,40 +74,23 @@ func (h *TeamHandler) Create(c echo.Context) error {
 		})
 	}
 
-	if req.Name == "" {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "팀 이름을 입력해주세요",
-		})
-	}
-
 	ctx := c.Request().Context()
 
-	// Check if league exists
-	_, err = h.leagueRepo.GetByID(ctx, leagueID)
+	team, err := h.teamService.Create(ctx, leagueID, &req)
 	if err != nil {
-		if errors.Is(err, repository.ErrLeagueNotFound) {
+		if errors.Is(err, service.ErrTeamNameRequired) {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_request",
+				Message: "팀 이름을 입력해주세요",
+			})
+		}
+		if errors.Is(err, service.ErrLeagueNotFound) {
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "리그를 찾을 수 없습니다",
 			})
 		}
-		slog.Error("Team.Create: failed to get league", "error", err, "league_id", leagueID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "리그 정보를 불러오는데 실패했습니다",
-		})
-	}
-
-	team := &model.Team{
-		LeagueID:   leagueID,
-		Name:       req.Name,
-		Color:      req.Color,
-		IsOfficial: req.IsOfficial,
-	}
-
-	if err := h.teamRepo.Create(ctx, team); err != nil {
-		if errors.Is(err, repository.ErrTeamAlreadyExists) {
+		if errors.Is(err, service.ErrTeamAlreadyExists) {
 			return c.JSON(http.StatusConflict, model.ErrorResponse{
 				Error:   "conflict",
 				Message: "이미 같은 이름의 팀이 있습니다",
@@ -136,20 +101,6 @@ func (h *TeamHandler) Create(c echo.Context) error {
 			Error:   "server_error",
 			Message: "팀 생성에 실패했습니다",
 		})
-	}
-
-	// 팀 계좌 자동 생성
-	if h.accountRepo != nil {
-		account := &model.Account{
-			LeagueID:  leagueID,
-			OwnerID:   team.ID,
-			OwnerType: model.OwnerTypeTeam,
-			Balance:   0,
-		}
-		if err := h.accountRepo.Create(ctx, account); err != nil {
-			slog.Error("Team.Create: failed to create team account", "error", err, "team_id", team.ID)
-			// 계좌 생성 실패해도 팀은 생성되었으므로 에러 반환하지 않음
-		}
 	}
 
 	return c.JSON(http.StatusCreated, team)
@@ -176,36 +127,27 @@ func (h *TeamHandler) Update(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	team, err := h.teamRepo.GetByID(ctx, teamID)
+	team, err := h.teamService.Update(ctx, teamID, &req)
 	if err != nil {
-		if errors.Is(err, repository.ErrTeamNotFound) {
+		if errors.Is(err, service.ErrTeamNotFound) {
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "팀을 찾을 수 없습니다",
 			})
 		}
-		slog.Error("Team.Update: failed to get team", "error", err, "team_id", teamID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "팀 정보를 불러오는데 실패했습니다",
-		})
-	}
-
-	if req.Name != nil {
-		team.Name = *req.Name
-	}
-	if req.Color != nil {
-		team.Color = req.Color
-	}
-
-	if err := h.teamRepo.Update(ctx, team); err != nil {
-		if errors.Is(err, repository.ErrTeamAlreadyExists) {
+		if errors.Is(err, service.ErrTeamNameRequired) {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_request",
+				Message: "팀 이름을 입력해주세요",
+			})
+		}
+		if errors.Is(err, service.ErrTeamAlreadyExists) {
 			return c.JSON(http.StatusConflict, model.ErrorResponse{
 				Error:   "conflict",
 				Message: "이미 같은 이름의 팀이 있습니다",
 			})
 		}
-		slog.Error("Team.Update: failed to update team", "error", err, "team_id", teamID, "name", team.Name)
+		slog.Error("Team.Update: failed to update team", "error", err, "team_id", teamID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "팀 수정에 실패했습니다",
@@ -228,8 +170,8 @@ func (h *TeamHandler) Delete(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	if err := h.teamRepo.Delete(ctx, teamID); err != nil {
-		if errors.Is(err, repository.ErrTeamNotFound) {
+	if err := h.teamService.Delete(ctx, teamID); err != nil {
+		if errors.Is(err, service.ErrTeamNotFound) {
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "팀을 찾을 수 없습니다",

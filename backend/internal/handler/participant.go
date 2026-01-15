@@ -6,22 +6,18 @@ import (
 	"net/http"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
-	"github.com/f1-rivals-cup/backend/internal/repository"
+	"github.com/f1-rivals-cup/backend/internal/service"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
 type ParticipantHandler struct {
-	participantRepo *repository.ParticipantRepository
-	leagueRepo      *repository.LeagueRepository
-	accountRepo     *repository.AccountRepository
+	participantService *service.ParticipantService
 }
 
-func NewParticipantHandler(participantRepo *repository.ParticipantRepository, leagueRepo *repository.LeagueRepository, accountRepo *repository.AccountRepository) *ParticipantHandler {
+func NewParticipantHandler(participantService *service.ParticipantService) *ParticipantHandler {
 	return &ParticipantHandler{
-		participantRepo: participantRepo,
-		leagueRepo:      leagueRepo,
-		accountRepo:     accountRepo,
+		participantService: participantService,
 	}
 }
 
@@ -52,101 +48,48 @@ func (h *ParticipantHandler) Join(c echo.Context) error {
 		})
 	}
 
-	// Validate roles
-	if len(req.Roles) == 0 {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "최소 하나의 역할을 선택해주세요",
-		})
-	}
-
-	validRoles := map[string]bool{
-		string(model.RoleDirector): true,
-		string(model.RolePlayer):   true,
-		string(model.RoleReserve):  true,
-		string(model.RoleEngineer): true,
-	}
-	for _, role := range req.Roles {
-		if !validRoles[role] {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-				Error:   "invalid_role",
-				Message: "유효하지 않은 역할입니다: " + role,
-			})
-		}
-	}
-
 	ctx := c.Request().Context()
 
-	// Check if league exists and is open
-	league, err := h.leagueRepo.GetByID(ctx, leagueID)
+	participant, err := h.participantService.Join(ctx, leagueID, userID, &req)
 	if err != nil {
-		if errors.Is(err, repository.ErrLeagueNotFound) {
+		switch {
+		case errors.Is(err, service.ErrNoRolesProvided):
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_request",
+				Message: "최소 하나의 역할을 선택해주세요",
+			})
+		case errors.Is(err, service.ErrInvalidRole):
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_role",
+				Message: "유효하지 않은 역할입니다",
+			})
+		case errors.Is(err, service.ErrLeagueNotFound):
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "리그를 찾을 수 없습니다",
 			})
-		}
-		slog.Error("Participant.Join: failed to get league", "error", err, "league_id", leagueID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "리그 정보를 불러오는데 실패했습니다",
-		})
-	}
-
-	if league.Status != model.LeagueStatusOpen {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error:   "league_not_open",
-			Message: "현재 참가 신청을 받지 않는 리그입니다",
-		})
-	}
-
-	// Check player limit per team (2 players max)
-	hasPlayerRole := false
-	for _, role := range req.Roles {
-		if role == string(model.RolePlayer) {
-			hasPlayerRole = true
-			break
-		}
-	}
-
-	if hasPlayerRole && req.TeamName != nil && *req.TeamName != "" {
-		playerCount, err := h.participantRepo.CountPlayersByTeam(ctx, leagueID, *req.TeamName)
-		if err != nil {
-			slog.Error("Participant.Join: failed to count players by team", "error", err, "league_id", leagueID, "team_name", *req.TeamName)
-			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-				Error:   "server_error",
-				Message: "팀 정보를 확인하는데 실패했습니다",
+		case errors.Is(err, service.ErrLeagueNotOpen):
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "league_not_open",
+				Message: "현재 참가 신청을 받지 않는 리그입니다",
 			})
-		}
-		if playerCount >= 2 {
+		case errors.Is(err, service.ErrTeamFull):
 			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 				Error:   "team_full",
 				Message: "해당 팀의 선수 정원(2명)이 이미 찼습니다",
 			})
-		}
-	}
-
-	participant := &model.LeagueParticipant{
-		LeagueID: leagueID,
-		UserID:   userID,
-		Status:   model.ParticipantStatusPending,
-		Roles:    req.Roles,
-		TeamName: req.TeamName,
-		Message:  req.Message,
-	}
-
-	if err := h.participantRepo.Create(ctx, participant); err != nil {
-		if errors.Is(err, repository.ErrAlreadyParticipating) {
+		case errors.Is(err, service.ErrAlreadyParticipant):
 			return c.JSON(http.StatusConflict, model.ErrorResponse{
 				Error:   "already_participating",
 				Message: "이미 참가 신청한 리그입니다",
 			})
+		default:
+			slog.Error("Participant.Join: failed to join league", "error", err, "league_id", leagueID, "user_id", userID)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "참가 신청에 실패했습니다",
+			})
 		}
-		slog.Error("Participant.Join: failed to create participant", "error", err, "league_id", leagueID, "user_id", userID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "참가 신청에 실패했습니다",
-		})
 	}
 
 	return c.JSON(http.StatusCreated, participant)
@@ -173,18 +116,19 @@ func (h *ParticipantHandler) GetMyStatus(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	participant, err := h.participantRepo.GetByLeagueAndUser(ctx, leagueID, userID)
+	participant, err := h.participantService.GetMyStatus(ctx, leagueID, userID)
 	if err != nil {
-		if errors.Is(err, repository.ErrParticipantNotFound) {
-			return c.JSON(http.StatusOK, map[string]interface{}{
-				"is_participating": false,
-				"participant":      nil,
-			})
-		}
 		slog.Error("Participant.GetMyStatus: failed to get participant status", "error", err, "league_id", leagueID, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가 상태를 확인하는데 실패했습니다",
+		})
+	}
+
+	if participant == nil {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"is_participating": false,
+			"participant":      nil,
 		})
 	}
 
@@ -215,35 +159,26 @@ func (h *ParticipantHandler) Cancel(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	participant, err := h.participantRepo.GetByLeagueAndUser(ctx, leagueID, userID)
+	err = h.participantService.Cancel(ctx, leagueID, userID)
 	if err != nil {
-		if errors.Is(err, repository.ErrParticipantNotFound) {
+		switch {
+		case errors.Is(err, service.ErrParticipantNotFound):
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "참가 신청 내역이 없습니다",
 			})
+		case errors.Is(err, service.ErrCannotCancelApproved):
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "cannot_cancel",
+				Message: "이미 승인된 참가는 취소할 수 없습니다",
+			})
+		default:
+			slog.Error("Participant.Cancel: failed to cancel participation", "error", err, "league_id", leagueID, "user_id", userID)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "참가 취소에 실패했습니다",
+			})
 		}
-		slog.Error("Participant.Cancel: failed to get participant", "error", err, "league_id", leagueID, "user_id", userID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "참가 상태를 확인하는데 실패했습니다",
-		})
-	}
-
-	// Only pending or rejected can be deleted by user
-	if participant.Status == model.ParticipantStatusApproved {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error:   "cannot_cancel",
-			Message: "이미 승인된 참가는 취소할 수 없습니다",
-		})
-	}
-
-	if err := h.participantRepo.Delete(ctx, participant.ID); err != nil {
-		slog.Error("Participant.Cancel: failed to delete participant", "error", err, "participant_id", participant.ID, "league_id", leagueID, "user_id", userID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "참가 취소에 실패했습니다",
-		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
@@ -265,17 +200,13 @@ func (h *ParticipantHandler) ListByLeague(c echo.Context) error {
 	status := c.QueryParam("status")
 	ctx := c.Request().Context()
 
-	participants, err := h.participantRepo.ListByLeague(ctx, leagueID, status)
+	participants, err := h.participantService.ListByLeague(ctx, leagueID, status)
 	if err != nil {
 		slog.Error("Participant.ListByLeague: failed to list participants", "error", err, "league_id", leagueID, "status", status)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가자 목록을 불러오는데 실패했습니다",
 		})
-	}
-
-	if participants == nil {
-		participants = []*model.LeagueParticipant{}
 	}
 
 	return c.JSON(http.StatusOK, model.ListParticipantsResponse{
@@ -296,17 +227,13 @@ func (h *ParticipantHandler) ListMyParticipations(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	participants, err := h.participantRepo.ListByUser(ctx, userID)
+	participants, err := h.participantService.ListMyParticipations(ctx, userID)
 	if err != nil {
 		slog.Error("Participant.ListMyParticipations: failed to list user participations", "error", err, "user_id", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "참가 목록을 불러오는데 실패했습니다",
 		})
-	}
-
-	if participants == nil {
-		participants = []*model.LeagueParticipant{}
 	}
 
 	return c.JSON(http.StatusOK, model.ListParticipantsResponse{
@@ -334,65 +261,27 @@ func (h *ParticipantHandler) UpdateStatus(c echo.Context) error {
 		})
 	}
 
-	if req.Status != model.ParticipantStatusApproved && req.Status != model.ParticipantStatusRejected {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error:   "invalid_status",
-			Message: "유효하지 않은 상태입니다",
-		})
-	}
-
 	ctx := c.Request().Context()
 
-	// Get participant to check current status and get league ID
-	participant, err := h.participantRepo.GetByID(ctx, id)
+	_, err = h.participantService.UpdateStatus(ctx, id, req.Status)
 	if err != nil {
-		if errors.Is(err, repository.ErrParticipantNotFound) {
+		switch {
+		case errors.Is(err, service.ErrInvalidStatus):
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_status",
+				Message: "유효하지 않은 상태입니다",
+			})
+		case errors.Is(err, service.ErrParticipantNotFound):
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "참가자를 찾을 수 없습니다",
 			})
-		}
-		slog.Error("Participant.UpdateStatus: failed to get participant", "error", err, "participant_id", id)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "참가자 조회에 실패했습니다",
-		})
-	}
-
-	if err := h.participantRepo.UpdateStatus(ctx, id, req.Status); err != nil {
-		if errors.Is(err, repository.ErrParticipantNotFound) {
-			return c.JSON(http.StatusNotFound, model.ErrorResponse{
-				Error:   "not_found",
-				Message: "참가자를 찾을 수 없습니다",
+		default:
+			slog.Error("Participant.UpdateStatus: failed to update participant status", "error", err, "participant_id", id, "status", req.Status)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "상태 변경에 실패했습니다",
 			})
-		}
-		slog.Error("Participant.UpdateStatus: failed to update participant status", "error", err, "participant_id", id, "status", req.Status)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "상태 변경에 실패했습니다",
-		})
-	}
-
-	// Create participant account when approved (if not already exists)
-	if req.Status == model.ParticipantStatusApproved && participant.Status != model.ParticipantStatusApproved {
-		// Check if account already exists
-		_, err := h.accountRepo.GetByOwner(ctx, participant.LeagueID, participant.ID, model.OwnerTypeParticipant)
-		if errors.Is(err, repository.ErrAccountNotFound) {
-			// Create new account for participant
-			account := &model.Account{
-				LeagueID:  participant.LeagueID,
-				OwnerID:   participant.ID,
-				OwnerType: model.OwnerTypeParticipant,
-				Balance:   0,
-			}
-			if err := h.accountRepo.Create(ctx, account); err != nil {
-				slog.Error("Participant.UpdateStatus: failed to create participant account", "error", err, "participant_id", id)
-				// Don't fail the request, account creation is secondary
-			} else {
-				slog.Info("Participant.UpdateStatus: created participant account", "participant_id", id, "account_id", account.ID)
-			}
-		} else if err != nil {
-			slog.Error("Participant.UpdateStatus: failed to check existing account", "error", err, "participant_id", id)
 		}
 	}
 
@@ -424,8 +313,9 @@ func (h *ParticipantHandler) UpdateTeam(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	if err := h.participantRepo.UpdateTeam(ctx, id, req.TeamName); err != nil {
-		if errors.Is(err, repository.ErrParticipantNotFound) {
+	err = h.participantService.UpdateTeam(ctx, id, req.TeamName)
+	if err != nil {
+		if errors.Is(err, service.ErrParticipantNotFound) {
 			return c.JSON(http.StatusNotFound, model.ErrorResponse{
 				Error:   "not_found",
 				Message: "참가자를 찾을 수 없습니다",

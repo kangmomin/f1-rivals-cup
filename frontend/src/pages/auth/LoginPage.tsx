@@ -37,7 +37,7 @@ export default function LoginPage() {
         email: data.email,
         password: data.password,
       })
-      login(response.user)
+      login(response.user, response.access_token)
       navigate('/')
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.data) {

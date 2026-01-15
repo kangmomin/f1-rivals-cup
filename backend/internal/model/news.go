@@ -53,3 +53,15 @@ type GenerateNewsContentResponse struct {
 	Description  string `json:"description"`
 	NewsProvider string `json:"news_provider"`
 }
+
+// GenerateNewsRequest represents a request to generate news content using AI (alias for service layer)
+type GenerateNewsRequest struct {
+	Input string `json:"input" validate:"required"`
+}
+
+// GeneratedNews represents the AI-generated news content (alias for service layer)
+type GeneratedNews struct {
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	NewsProvider string `json:"news_provider"`
+}

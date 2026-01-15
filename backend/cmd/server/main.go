@@ -55,19 +55,25 @@ func main() {
 
 	// Initialize services
 	aiService := service.NewAIService(cfg.GeminiAPIKey)
+	leagueService := service.NewLeagueService(leagueRepo)
+	matchService := service.NewMatchService(matchRepo, leagueRepo)
+	teamService := service.NewTeamService(teamRepo, leagueRepo, accountRepo)
+	newsService := service.NewNewsService(newsRepo, leagueRepo, aiService)
+	participantService := service.NewParticipantService(participantRepo, leagueRepo, accountRepo)
+	financeService := service.NewFinanceService(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
 
 	// Initialize handlers
 	healthHandler := handler.NewHealthHandler()
-	authHandler := handler.NewAuthHandler(userRepo, jwtService)
+	authHandler := handler.NewAuthHandler(userRepo, jwtService, cfg.IsDevelopment())
 	adminHandler := handler.NewAdminHandler(userRepo, permissionHistoryRepo)
-	leagueHandler := handler.NewLeagueHandler(leagueRepo)
-	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo, accountRepo)
-	matchHandler := handler.NewMatchHandler(matchRepo, leagueRepo)
+	leagueHandler := handler.NewLeagueHandler(leagueService)
+	participantHandler := handler.NewParticipantHandler(participantService)
+	matchHandler := handler.NewMatchHandler(matchService)
 	matchResultHandler := handler.NewMatchResultHandler(matchResultRepo, matchRepo, leagueRepo)
-	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo, accountRepo)
-	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo, aiService)
+	teamHandler := handler.NewTeamHandler(teamService)
+	newsHandler := handler.NewNewsHandler(newsService)
 	commentHandler := handler.NewCommentHandler(commentRepo)
-	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
+	financeHandler := handler.NewFinanceHandler(financeService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -119,31 +125,31 @@ func main() {
 	adminGroup.GET("/permission-history", adminHandler.GetRecentPermissionHistory, custommiddleware.RequirePermission(auth.PermUserView))
 	adminGroup.GET("/stats", adminHandler.GetUserStats, custommiddleware.RequirePermission(auth.PermUserView))
 
-	// League routes (protected)
-	adminGroup.POST("/leagues", leagueHandler.Create)
+	// League routes (protected with permissions)
+	adminGroup.POST("/leagues", leagueHandler.Create, custommiddleware.RequirePermission(auth.PermLeagueCreate))
 	adminGroup.GET("/leagues", leagueHandler.List)
 	adminGroup.GET("/leagues/:id", leagueHandler.Get)
-	adminGroup.PUT("/leagues/:id", leagueHandler.Update)
-	adminGroup.DELETE("/leagues/:id", leagueHandler.Delete)
+	adminGroup.PUT("/leagues/:id", leagueHandler.Update, custommiddleware.RequirePermission(auth.PermLeagueEdit))
+	adminGroup.DELETE("/leagues/:id", leagueHandler.Delete, custommiddleware.RequirePermission(auth.PermLeagueDelete))
 
 	// Admin participant routes
 	adminGroup.GET("/leagues/:id/participants", participantHandler.ListByLeague)
 	adminGroup.PUT("/participants/:id/status", participantHandler.UpdateStatus)
 	adminGroup.PUT("/participants/:id/team", participantHandler.UpdateTeam)
 
-	// Admin match routes
-	adminGroup.POST("/leagues/:id/matches", matchHandler.Create)
-	adminGroup.PUT("/matches/:id", matchHandler.Update)
-	adminGroup.DELETE("/matches/:id", matchHandler.Delete)
+	// Admin match routes (protected with permissions)
+	adminGroup.POST("/leagues/:id/matches", matchHandler.Create, custommiddleware.RequirePermission(auth.PermMatchEdit))
+	adminGroup.PUT("/matches/:id", matchHandler.Update, custommiddleware.RequirePermission(auth.PermMatchEdit))
+	adminGroup.DELETE("/matches/:id", matchHandler.Delete, custommiddleware.RequirePermission(auth.PermMatchEdit))
 
-	// Admin match result routes
-	adminGroup.PUT("/matches/:id/results", matchResultHandler.BulkUpdate)
-	adminGroup.DELETE("/matches/:id/results", matchResultHandler.Delete)
+	// Admin match result routes (protected with permissions)
+	adminGroup.PUT("/matches/:id/results", matchResultHandler.BulkUpdate, custommiddleware.RequirePermission(auth.PermMatchResult))
+	adminGroup.DELETE("/matches/:id/results", matchResultHandler.Delete, custommiddleware.RequirePermission(auth.PermMatchResult))
 
-	// Admin team routes
-	adminGroup.POST("/leagues/:id/teams", teamHandler.Create)
-	adminGroup.PUT("/teams/:id", teamHandler.Update)
-	adminGroup.DELETE("/teams/:id", teamHandler.Delete)
+	// Admin team routes (protected with permissions)
+	adminGroup.POST("/leagues/:id/teams", teamHandler.Create, custommiddleware.RequirePermission(auth.PermLeagueEdit))
+	adminGroup.PUT("/teams/:id", teamHandler.Update, custommiddleware.RequirePermission(auth.PermLeagueEdit))
+	adminGroup.DELETE("/teams/:id", teamHandler.Delete, custommiddleware.RequirePermission(auth.PermLeagueEdit))
 
 	// Admin news routes (protected with permissions)
 	// AI generate endpoint with rate limiting (30 req/min, burst 10) - disabled in dev
@@ -163,9 +169,9 @@ func main() {
 	adminGroup.PUT("/news/:id/unpublish", newsHandler.Unpublish, custommiddleware.RequirePermission(auth.PermNewsPublish))
 	adminGroup.DELETE("/news/:id", newsHandler.Delete, custommiddleware.RequirePermission(auth.PermNewsDelete))
 
-	// Admin finance routes
-	adminGroup.PUT("/accounts/:id/balance", financeHandler.SetAccountBalance)
-	adminGroup.POST("/leagues/:id/transactions", financeHandler.CreateTransaction)
+	// Admin finance routes (protected with permissions)
+	adminGroup.PUT("/accounts/:id/balance", financeHandler.SetAccountBalance, custommiddleware.RequirePermission(auth.PermFundManage))
+	adminGroup.POST("/leagues/:id/transactions", financeHandler.CreateTransaction, custommiddleware.RequirePermission(auth.PermFundManage))
 
 	// Public league routes
 	leagueGroup := v1.Group("/leagues")

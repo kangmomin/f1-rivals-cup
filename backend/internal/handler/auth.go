@@ -18,15 +18,17 @@ import (
 
 // AuthHandler handles authentication requests
 type AuthHandler struct {
-	userRepo   *repository.UserRepository
-	jwtService *auth.JWTService
+	userRepo      *repository.UserRepository
+	jwtService    *auth.JWTService
+	isDevelopment bool
 }
 
 // NewAuthHandler creates a new AuthHandler
-func NewAuthHandler(userRepo *repository.UserRepository, jwtService *auth.JWTService) *AuthHandler {
+func NewAuthHandler(userRepo *repository.UserRepository, jwtService *auth.JWTService, isDevelopment bool) *AuthHandler {
 	return &AuthHandler{
-		userRepo:   userRepo,
-		jwtService: jwtService,
+		userRepo:      userRepo,
+		jwtService:    jwtService,
+		isDevelopment: isDevelopment,
 	}
 }
 
@@ -210,6 +212,17 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		})
 	}
 
+	// Clear refresh token cookie
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   !h.isDevelopment,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1, // Expire immediately
+	})
+
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "로그아웃되었습니다",
 	})
@@ -217,23 +230,18 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 
 // RefreshToken handles POST /api/v1/auth/refresh
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
-	var req model.RefreshTokenRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "잘못된 요청입니다",
+	// Read refresh token from HttpOnly cookie
+	cookie, err := c.Cookie("refresh_token")
+	if err != nil || cookie.Value == "" {
+		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Error:   "invalid_token",
+			Message: "리프레시 토큰이 없습니다",
 		})
 	}
-
-	if req.RefreshToken == "" {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error:   "validation_error",
-			Message: "리프레시 토큰을 입력해주세요",
-		})
-	}
+	refreshToken := cookie.Value
 
 	// Validate refresh token
-	userID, err := h.jwtService.ValidateRefreshToken(req.RefreshToken)
+	userID, err := h.jwtService.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
 			Error:   "invalid_token",
@@ -259,11 +267,18 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 		})
 	}
 
-	// Verify refresh token matches stored token
-	if user.RefreshToken == nil || *user.RefreshToken != req.RefreshToken {
+	// Verify refresh token matches stored hash
+	if user.RefreshToken == nil {
 		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
 			Error:   "invalid_token",
-			Message: "유효하지 않은 토큰입니다",
+			Message: "리프레시 토큰이 유효하지 않습니다",
+		})
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.RefreshToken), []byte(refreshToken)); err != nil {
+		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Error:   "invalid_token",
+			Message: "리프레시 토큰이 유효하지 않습니다",
 		})
 	}
 
@@ -295,9 +310,19 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 		})
 	}
 
+	// Set new refresh token as HttpOnly cookie
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    newRefreshToken,
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   !h.isDevelopment,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   604800, // 7 days
+	})
+
 	return c.JSON(http.StatusOK, model.RefreshTokenResponse{
-		AccessToken:  accessToken,
-		RefreshToken: newRefreshToken,
+		AccessToken: accessToken,
 	})
 }
 
@@ -374,10 +399,20 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
+	// Set refresh token as HttpOnly cookie (XSS protection)
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   !h.isDevelopment,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   604800, // 7 days
+	})
+
 	return c.JSON(http.StatusOK, model.LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User:         user,
+		AccessToken: accessToken,
+		User:        user,
 	})
 }
 

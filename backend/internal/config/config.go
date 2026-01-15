@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -59,7 +60,22 @@ func Load() (*Config, error) {
 		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
 	}
 
+	// Validate security settings in production
+	if err := cfg.validateSecurity(); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+// validateSecurity checks critical security settings in production
+func (c *Config) validateSecurity() error {
+	if c.IsProduction() {
+		if c.JWTSecret == "dev-secret-key" || len(c.JWTSecret) < 32 {
+			return errors.New("JWT_SECRET must be set to a secure value (min 32 chars) in production")
+		}
+	}
+	return nil
 }
 
 // getEnv returns the value of an environment variable or a default value

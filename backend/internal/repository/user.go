@@ -12,6 +12,7 @@ import (
 	"github.com/f1-rivals-cup/backend/internal/database"
 	"github.com/f1-rivals-cup/backend/internal/model"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -184,11 +185,16 @@ func (r *UserRepository) ExistsByNickname(ctx context.Context, nickname string) 
 	return exists, nil
 }
 
-// UpdateRefreshToken updates the user's refresh token
+// UpdateRefreshToken saves hashed refresh token to database
 func (r *UserRepository) UpdateRefreshToken(ctx context.Context, userID uuid.UUID, token string) error {
+	hashedToken, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
 	query := `UPDATE users SET refresh_token = $1, updated_at = NOW() WHERE id = $2`
 
-	_, err := r.db.Pool.ExecContext(ctx, query, token, userID)
+	_, err = r.db.Pool.ExecContext(ctx, query, string(hashedToken), userID)
 	return err
 }
 
