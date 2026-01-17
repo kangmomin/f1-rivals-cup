@@ -72,6 +72,23 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
       return
     }
 
+    // 잔액 초과 경고: FIA 비잔액 지출이 아닌 경우에만 검사
+    const fromAccount = accounts.find(a => a.id === fromAccountId)
+    const shouldCheckBalance = !(isFiaAccount && !useBalance)
+
+    if (shouldCheckBalance && fromAccount && parsedAmount > fromAccount.balance) {
+      const afterBalance = fromAccount.balance - parsedAmount
+      const confirmed = window.confirm(
+        `이체 금액(${parsedAmount.toLocaleString('ko-KR')}원)이 ` +
+        `현재 잔액(${fromAccount.balance.toLocaleString('ko-KR')}원)보다 많습니다.\n` +
+        `이체 후 잔액이 ${afterBalance.toLocaleString('ko-KR')}원이 됩니다.\n\n` +
+        `계속 진행하시겠습니까?`
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+
     setIsSubmitting(true)
     try {
       if (directorMode) {

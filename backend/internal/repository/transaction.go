@@ -34,18 +34,15 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *model.Transactio
 	defer dbTx.Rollback()
 
 	if useBalance {
-		// 잔액 지출: from 계좌에서 잔액 차감 (잔액 검사 포함)
+		// 잔액 지출: from 계좌에서 잔액 차감 (음수 잔액 허용)
 		updateFromQuery := `
 			UPDATE accounts
 			SET balance = balance - $2, updated_at = NOW()
-			WHERE id = $1 AND balance >= $2
+			WHERE id = $1
 			RETURNING balance
 		`
 		var newFromBalance int64
 		if err := dbTx.QueryRowContext(ctx, updateFromQuery, tx.FromAccountID, tx.Amount).Scan(&newFromBalance); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return ErrInsufficientBalance
-			}
 			return err
 		}
 	}
