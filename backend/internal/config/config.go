@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -87,4 +88,12 @@ func (c *Config) IsDevelopment() bool {
 // IsProduction returns true if running in production mode
 func (c *Config) IsProduction() bool {
 	return c.ServerEnv == "production"
+}
+
+// Validate checks that required configuration is set for the environment
+func (c *Config) Validate() error {
+	if c.IsProduction() && (c.JWTSecret == "" || c.JWTSecret == "dev-secret-key") {
+		return errors.New("JWT_SECRET 환경변수가 프로덕션에서 필수입니다")
+	}
+	return nil
 }
