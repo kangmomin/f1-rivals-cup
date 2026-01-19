@@ -12,6 +12,7 @@ import (
 	"github.com/f1-rivals-cup/backend/internal/auth"
 	"github.com/f1-rivals-cup/backend/internal/model"
 	"github.com/f1-rivals-cup/backend/internal/repository"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -177,6 +178,19 @@ func generateToken(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+// isSecureRequest determines if the request is secure (TLS or behind HTTPS proxy)
+func isSecureRequest(c echo.Context) bool {
+	// Check if direct TLS connection
+	if c.Request().TLS != nil {
+		return true
+	}
+	// Check X-Forwarded-Proto header (set by reverse proxies)
+	if c.Request().Header.Get("X-Forwarded-Proto") == "https" {
+		return true
+	}
+	return false
+}
+
 // Logout handles POST /api/v1/auth/logout
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// Get token from Authorization header
@@ -210,6 +224,18 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		})
 	}
 
+	// Clear httpOnly cookie
+	cookie := &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   isSecureRequest(c),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1, // Delete cookie
+	}
+	c.SetCookie(cookie)
+
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "로그아웃되었습니다",
 	})
@@ -223,6 +249,14 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 			Error:   "invalid_request",
 			Message: "잘못된 요청입니다",
 		})
+	}
+
+	// Try to get refresh token from httpOnly cookie first, then fall back to request body
+	if req.RefreshToken == "" {
+		cookie, err := c.Cookie("refresh_token")
+		if err == nil && cookie.Value != "" {
+			req.RefreshToken = cookie.Value
+		}
 	}
 
 	if req.RefreshToken == "" {
@@ -295,9 +329,20 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 		})
 	}
 
+	// Set httpOnly cookie for new refresh token
+	cookie := &http.Cookie{
+		Name:     "refresh_token",
+		Value:    newRefreshToken,
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   isSecureRequest(c),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(h.jwtService.RefreshExpiry().Seconds()),
+	}
+	c.SetCookie(cookie)
+
 	return c.JSON(http.StatusOK, model.RefreshTokenResponse{
-		AccessToken:  accessToken,
-		RefreshToken: newRefreshToken,
+		AccessToken: accessToken,
 	})
 }
 
@@ -374,10 +419,21 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
+	// Set httpOnly cookie for refresh token
+	cookie := &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   isSecureRequest(c),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(h.jwtService.RefreshExpiry().Seconds()),
+	}
+	c.SetCookie(cookie)
+
 	return c.JSON(http.StatusOK, model.LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User:         user,
+		AccessToken: accessToken,
+		User:        user,
 	})
 }
 
@@ -509,4 +565,34 @@ func (h *AuthHandler) ConfirmPasswordReset(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "비밀번호가 성공적으로 변경되었습니다",
 	})
+}
+
+// GetMe handles GET /api/v1/auth/me - returns current user info
+func (h *AuthHandler) GetMe(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "인증이 필요합니다",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	user, err := h.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+				Error:   "unauthorized",
+				Message: "사용자를 찾을 수 없습니다",
+			})
+		}
+		slog.Error("Auth.GetMe: failed to get user", "error", err, "userID", userID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "서버 오류가 발생했습니다",
+		})
+	}
+
+	return c.JSON(http.StatusOK, user)
 }

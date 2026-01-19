@@ -29,6 +29,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		slog.Error("Config validation failed", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize database
 	db, err := database.New(cfg.DatabaseURL)
 	if err != nil {
@@ -101,6 +107,7 @@ func main() {
 	authGroup.POST("/refresh", authHandler.RefreshToken)
 	authGroup.POST("/password-reset", authHandler.RequestPasswordReset)
 	authGroup.POST("/password-reset/confirm", authHandler.ConfirmPasswordReset)
+	authGroup.GET("/me", authHandler.GetMe, custommiddleware.AuthMiddleware(jwtService))
 
 	// Admin routes (protected - require STAFF or ADMIN role)
 	adminGroup := v1.Group("/admin")
