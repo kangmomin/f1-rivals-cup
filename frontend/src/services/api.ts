@@ -7,6 +7,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enable cookies for httpOnly refresh token
 })
 
 let isRefreshing = false
@@ -58,31 +59,24 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (!refreshToken) {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-
       try {
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        })
+        // Refresh token is sent automatically via httpOnly cookie
+        const response = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        )
 
-        const { access_token, refresh_token } = response.data
+        const { access_token } = response.data
         localStorage.setItem('accessToken', access_token)
-        localStorage.setItem('refreshToken', refresh_token)
 
         processQueue(null)
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError as Error)
         localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
+        // Note: refresh_token cookie is cleared by server or expires
         window.location.href = '/login'
         return Promise.reject(refreshError)
       } finally {
