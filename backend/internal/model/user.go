@@ -84,9 +84,9 @@ type LoginRequest struct {
 
 // LoginResponse represents a user login response
 type LoginResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	User         *User  `json:"user"`
+	AccessToken string `json:"access_token"`
+	User        *User  `json:"user"`
+	// Note: refresh_token is now sent via httpOnly cookie only
 }
 
 // ErrorResponse represents an error response
@@ -102,8 +102,8 @@ type RefreshTokenRequest struct {
 
 // RefreshTokenResponse represents a token refresh response
 type RefreshTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken string `json:"access_token"`
+	// Note: refresh_token is now sent via httpOnly cookie only
 }
 
 // PasswordResetRequest represents a password reset request

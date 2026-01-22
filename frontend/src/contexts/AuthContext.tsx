@@ -19,18 +19,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Load user from localStorage on mount
-    const storedUser = localStorage.getItem('user')
-    const accessToken = localStorage.getItem('accessToken')
+    // Verify session with server on mount
+    const verifyAuth = async () => {
+      const accessToken = localStorage.getItem('accessToken')
+      if (!accessToken) {
+        setIsLoading(false)
+        return
+      }
 
-    if (storedUser && accessToken) {
       try {
-        setUser(JSON.parse(storedUser))
+        // Verify session by fetching current user from server
+        const serverUser = await authService.getCurrentUser()
+        setUser(serverUser)
+        localStorage.setItem('user', JSON.stringify(serverUser))
       } catch {
+        // Session invalid, clear local storage
+        localStorage.removeItem('accessToken')
         localStorage.removeItem('user')
+        setUser(null)
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    verifyAuth()
   }, [])
 
   const login = (userData: User) => {

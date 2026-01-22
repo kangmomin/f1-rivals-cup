@@ -94,7 +94,7 @@ func (s *AIService) GenerateNewsContent(ctx context.Context, userInput string) (
 	}
 
 	// Gemini API endpoint
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=%s", s.apiKey)
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
 
 	prompt := fmt.Sprintf(`당신은 F1 Rivals Cup의 전문 뉴스 기자입니다. 아래 정보를 바탕으로 뉴스 기사를 작성해주세요.
 
@@ -152,6 +152,7 @@ func (s *AIService) GenerateNewsContent(ctx context.Context, userInput string) (
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", s.apiKey)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {

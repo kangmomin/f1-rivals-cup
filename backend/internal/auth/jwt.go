@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -28,6 +29,11 @@ func NewJWTService(secretKey string, accessExpiry, refreshExpiry time.Duration) 
 		accessExpiry:  accessExpiry,
 		refreshExpiry: refreshExpiry,
 	}
+}
+
+// RefreshExpiry returns the refresh token expiry duration
+func (s *JWTService) RefreshExpiry() time.Duration {
+	return s.refreshExpiry
 }
 
 func (s *JWTService) GenerateAccessToken(userID uuid.UUID, email, nickname, role string, permissions []string) (string, error) {
@@ -61,6 +67,10 @@ func (s *JWTService) GenerateRefreshToken(userID uuid.UUID) (string, error) {
 
 func (s *JWTService) ValidateAccessToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		// Verify signing method is HMAC
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("예상치 못한 서명 방식: %v", token.Header["alg"])
+		}
 		return []byte(s.secretKey), nil
 	})
 
@@ -77,6 +87,10 @@ func (s *JWTService) ValidateAccessToken(tokenString string) (*Claims, error) {
 
 func (s *JWTService) ValidateRefreshToken(tokenString string) (uuid.UUID, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Verify signing method is HMAC
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("예상치 못한 서명 방식: %v", token.Header["alg"])
+		}
 		return []byte(s.secretKey), nil
 	})
 

@@ -32,8 +32,8 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   access_token: string
-  refresh_token: string
   user: User
+  // Note: refresh_token is now sent via httpOnly cookie only
 }
 
 export interface ErrorResponse {
@@ -43,7 +43,7 @@ export interface ErrorResponse {
 
 export interface RefreshTokenResponse {
   access_token: string
-  refresh_token: string
+  // Note: refresh_token is now sent via httpOnly cookie only
 }
 
 export const authService = {
@@ -55,26 +55,18 @@ export const authService = {
   async login(data: LoginRequest): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/auth/login', data)
 
-    // Store tokens
+    // Store access token only (refresh token is in httpOnly cookie)
     localStorage.setItem('accessToken', response.data.access_token)
-    localStorage.setItem('refreshToken', response.data.refresh_token)
 
     return response.data
   },
 
   async refreshToken(): Promise<RefreshTokenResponse> {
-    const refreshToken = localStorage.getItem('refreshToken')
-    if (!refreshToken) {
-      throw new Error('No refresh token available')
-    }
+    // Refresh token is sent automatically via httpOnly cookie
+    const response = await api.post<RefreshTokenResponse>('/auth/refresh', {})
 
-    const response = await api.post<RefreshTokenResponse>('/auth/refresh', {
-      refresh_token: refreshToken,
-    })
-
-    // Update stored tokens
+    // Update access token only (refresh token is in httpOnly cookie)
     localStorage.setItem('accessToken', response.data.access_token)
-    localStorage.setItem('refreshToken', response.data.refresh_token)
 
     return response.data
   },
@@ -86,8 +78,8 @@ export const authService = {
       // Ignore errors, proceed with local logout
     } finally {
       localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
       localStorage.removeItem('user')
+      // Note: refresh_token cookie is cleared by server
     }
   },
 
@@ -99,8 +91,10 @@ export const authService = {
     return localStorage.getItem('accessToken')
   },
 
-  getRefreshToken(): string | null {
-    return localStorage.getItem('refreshToken')
+  // Get current user from server (for session verification)
+  async getCurrentUser(): Promise<User> {
+    const response = await api.get<User>('/auth/me')
+    return response.data
   },
 
   async requestPasswordReset(email: string): Promise<{ message: string }> {

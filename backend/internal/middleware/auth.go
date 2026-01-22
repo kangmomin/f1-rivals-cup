@@ -140,12 +140,6 @@ func RequirePermission(required ...auth.Permission) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// Build permission names for error message
-			permNames := make([]string, len(required))
-			for i, p := range required {
-				permNames[i] = string(p)
-			}
-
 			return c.JSON(http.StatusForbidden, model.PermissionErrorResponse{
 				Error: struct {
 					Code               string   `json:"code"`
@@ -156,16 +150,9 @@ func RequirePermission(required ...auth.Permission) echo.MiddlewareFunc {
 						UserPermissions []string `json:"user_permissions"`
 					} `json:"details,omitempty"`
 				}{
-					Code:               "insufficient_permission",
-					Message:            "이 작업을 수행할 권한이 없습니다",
-					RequiredPermission: strings.Join(permNames, ", "),
-					Details: &struct {
-						UserRole        string   `json:"user_role"`
-						UserPermissions []string `json:"user_permissions"`
-					}{
-						UserRole:        string(role),
-						UserPermissions: permissions,
-					},
+					Code:    "insufficient_permission",
+					Message: "이 작업을 수행할 권한이 없습니다",
+					// Omit RequiredPermission and Details to avoid exposing sensitive info
 				},
 			})
 		}
@@ -204,12 +191,6 @@ func RequireAllPermissions(required ...auth.Permission) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// Build permission names for error message
-			permNames := make([]string, len(required))
-			for i, p := range required {
-				permNames[i] = string(p)
-			}
-
 			return c.JSON(http.StatusForbidden, model.PermissionErrorResponse{
 				Error: struct {
 					Code               string   `json:"code"`
@@ -220,16 +201,9 @@ func RequireAllPermissions(required ...auth.Permission) echo.MiddlewareFunc {
 						UserPermissions []string `json:"user_permissions"`
 					} `json:"details,omitempty"`
 				}{
-					Code:               "insufficient_permission",
-					Message:            "이 작업을 수행할 권한이 없습니다",
-					RequiredPermission: strings.Join(permNames, ", "),
-					Details: &struct {
-						UserRole        string   `json:"user_role"`
-						UserPermissions []string `json:"user_permissions"`
-					}{
-						UserRole:        string(role),
-						UserPermissions: permissions,
-					},
+					Code:    "insufficient_permission",
+					Message: "이 작업을 수행할 권한이 없습니다",
+					// Omit RequiredPermission and Details to avoid exposing sensitive info
 				},
 			})
 		}
