@@ -82,6 +82,12 @@
   .input-error {
     @apply border-loss focus:border-loss focus:ring-loss;
   }
+
+  /* Table wrapper - enables horizontal scroll on mobile */
+  .table-wrapper {
+    @apply overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Utility classes */
