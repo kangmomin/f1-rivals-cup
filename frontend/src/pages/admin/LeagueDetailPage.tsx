@@ -725,7 +725,7 @@ export default function LeagueDetailPage() {
                         </td>
                         <td className="px-4 py-3">
                           {p.status === 'pending' ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 whitespace-nowrap">
                               <button
                                 onClick={() => handleUpdateStatus(p.id, 'approved')}
                                 disabled={processingId === p.id}
