@@ -668,13 +668,13 @@ export default function LeagueDetailPage() {
             </div>
 
             {/* Applications Table */}
-            <div className="bg-carbon-dark border border-steel rounded-lg overflow-hidden">
+            <div className="bg-carbon-dark border border-steel rounded-lg overflow-x-auto">
               {isLoadingParticipants ? (
                 <div className="p-8 text-center text-text-secondary">로딩 중...</div>
               ) : participants.length === 0 ? (
                 <div className="p-8 text-center text-text-secondary">참가 신청이 없습니다</div>
               ) : (
-                <table className="w-full">
+                <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="border-b border-steel">
                       <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">신청자</th>
@@ -690,14 +690,14 @@ export default function LeagueDetailPage() {
                   <tbody className="divide-y divide-steel">
                     {participants.map((p) => (
                       <tr key={p.id} className="hover:bg-steel/20">
-                        <td className="px-4 py-3 text-sm text-white font-medium">
+                        <td className="px-4 py-3 text-sm text-white font-medium whitespace-nowrap">
                           {p.user_nickname || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {p.user_email || '-'}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-nowrap gap-1">
                             {p.roles && p.roles.length > 0 ? (
                               p.roles.map((role) => (
                                 <span key={role} className="px-1.5 py-0.5 bg-neon/10 text-neon rounded text-xs">
@@ -709,7 +709,7 @@ export default function LeagueDetailPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {p.team_name || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-text-secondary max-w-[200px] truncate" title={p.message || ''}>
@@ -755,7 +755,7 @@ export default function LeagueDetailPage() {
         )}
 
         {activeTab === 'members' && (
-          <div className="bg-carbon-dark border border-steel rounded-lg overflow-hidden">
+          <div className="bg-carbon-dark border border-steel rounded-lg overflow-x-auto">
             <div className="px-4 py-3 border-b border-steel flex items-center justify-between">
               <span className="text-sm text-text-secondary">승인된 참가자 {participants.length}명</span>
             </div>
@@ -764,7 +764,7 @@ export default function LeagueDetailPage() {
             ) : participants.length === 0 ? (
               <div className="p-8 text-center text-text-secondary">승인된 참가자가 없습니다</div>
             ) : (
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="border-b border-steel">
                     <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">닉네임</th>
@@ -777,10 +777,10 @@ export default function LeagueDetailPage() {
                 <tbody className="divide-y divide-steel">
                   {participants.map((p) => (
                     <tr key={p.id} className="hover:bg-steel/20">
-                      <td className="px-4 py-3 text-sm text-white font-medium">{p.user_nickname || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{p.user_email || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-white font-medium whitespace-nowrap">{p.user_nickname || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">{p.user_email || '-'}</td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-nowrap gap-1">
                           {p.roles && p.roles.length > 0 ? (
                             p.roles.map((role) => (
                               <span key={role} className="px-1.5 py-0.5 bg-neon/10 text-neon rounded text-xs">
@@ -819,7 +819,7 @@ export default function LeagueDetailPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{formatDateTime(p.created_at)}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">{formatDateTime(p.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
