@@ -458,18 +458,18 @@ export default function DashboardPage() {
               ) : (
                 leagues.map((league) => (
                   <tr key={league.id} className="hover:bg-steel/20">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <button
                         onClick={() => navigate(`/admin/leagues/${league.id}`)}
-                        className="text-sm font-medium text-white hover:text-neon transition-colors text-left"
+                        className="text-sm font-medium text-white hover:text-neon transition-colors text-left whitespace-nowrap"
                       >
                         {league.name}
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-sm text-white">
+                    <td className="px-4 py-3 text-sm text-white whitespace-nowrap">
                       시즌 {league.season}
                     </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">
+                    <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                       {formatDate(league.start_date)} ~ {formatDate(league.end_date)}
                     </td>
                     <td className="px-4 py-3">
@@ -621,18 +621,18 @@ export default function DashboardPage() {
                         {ROLE_LABELS[user.role] || '일반 유저'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {user.role === 'ADMIN' ? (
-                        <span className="text-xs text-racing">모든 권한</span>
+                        <span className="text-xs text-racing whitespace-nowrap">모든 권한</span>
                       ) : user.permissions && user.permissions.length > 0 ? (
-                        <span className="text-xs text-text-secondary">
+                        <span className="text-xs text-text-secondary whitespace-nowrap">
                           {user.permissions.length}개 권한
                         </span>
                       ) : (
                         <span className="text-xs text-text-secondary">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">
+                    <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                       {new Date(user.created_at).toLocaleDateString('ko-KR')}
                     </td>
                     <td className="px-4 py-3 text-right">
