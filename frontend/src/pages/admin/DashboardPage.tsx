@@ -696,10 +696,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-steel flex-shrink-0">
+            <div className="flex border-b border-steel flex-shrink-0 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('edit')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === 'edit'
                     ? 'text-neon border-b-2 border-neon'
                     : 'text-text-secondary hover:text-white'
@@ -709,7 +709,7 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === 'history'
                     ? 'text-neon border-b-2 border-neon'
                     : 'text-text-secondary hover:text-white'
@@ -733,12 +733,12 @@ export default function DashboardPage() {
                     <label className="block text-sm font-medium text-white mb-3">
                       역할 (Role)
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 overflow-x-auto">
                       {rolesList.map((role) => (
                         <button
                           key={role.code}
                           onClick={() => setSelectedRole(role.code as UserRole)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                             selectedRole === role.code
                               ? 'bg-neon text-carbon'
                               : 'bg-steel/30 text-text-secondary hover:bg-steel/50'
