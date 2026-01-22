@@ -84,6 +84,7 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{
+			"http://localhost:17090",
 			"http://localhost:5173",
 			"http://localhost:3000",
 			"https://frc.up.railway.app",

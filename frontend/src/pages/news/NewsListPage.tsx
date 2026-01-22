@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { newsService, News } from '../../services/news'
 import { leagueService, League } from '../../services/league'
 import { useAuth } from '../../contexts/AuthContext'
+import Pagination from '../../components/common/Pagination'
 
 export default function NewsListPage() {
   const { leagueId } = useParams<{ leagueId: string }>()
@@ -175,39 +176,11 @@ export default function NewsListPage() {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              이전
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`w-10 h-10 rounded-lg font-medium transition-colors ${
-                    p === page
-                      ? 'bg-neon text-black'
-                      : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              다음
-            </button>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </div>
     </main>
   )

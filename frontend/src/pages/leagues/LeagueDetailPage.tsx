@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import TransactionHistory from '../../components/finance/TransactionHistory'
 import TransactionForm from '../../components/finance/TransactionForm'
 import FinanceChart from '../../components/finance/FinanceChart'
+import { useFocusTrap, useScrollLock } from '../../hooks'
 
 const ALL_ROLES: ParticipantRole[] = ['director', 'player', 'reserve', 'engineer']
 
@@ -76,6 +77,28 @@ export default function LeagueDetailPage() {
   const [financeStats, setFinanceStats] = useState<FinanceStats | null>(null)
   const [isLoadingFinance, setIsLoadingFinance] = useState(false)
   const [showTransactionForm, setShowTransactionForm] = useState(false)
+
+  // 참가 신청 모달 접근성: 포커스 트랩과 스크롤 락
+  const joinModalRef = useFocusTrap<HTMLDivElement>(showJoinModal)
+  useScrollLock(showJoinModal)
+
+  // 참가 신청 모달 닫기 함수
+  const closeJoinModal = () => {
+    setShowJoinModal(false)
+    setJoinForm({ team_name: '', message: '', roles: [] })
+    setJoinError(null)
+  }
+
+  // ESC 키로 참가 신청 모달 닫기
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showJoinModal) {
+        closeJoinModal()
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [showJoinModal])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -394,14 +417,18 @@ export default function LeagueDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-steel mb-8">
-          <div className="flex items-center justify-between">
-            <nav className="flex gap-8">
+        <div className="border-b border-steel mb-8 overflow-x-auto scrollbar-hide">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 min-w-max sm:min-w-0">
+            <nav className="flex gap-4 sm:gap-8" role="tablist" aria-label="리그 정보 탭">
               {tabs.map((tab) => (
                 <button
                   key={tab.key}
+                  id={`tab-${tab.key}`}
+                  role="tab"
+                  aria-selected={activeTab === tab.key}
+                  aria-controls={`tabpanel-${tab.key}`}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+                  className={`pb-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap touch-target ${
                     activeTab === tab.key
                       ? 'border-racing text-white'
                       : 'border-transparent text-text-secondary hover:text-white'
@@ -411,7 +438,7 @@ export default function LeagueDetailPage() {
                 </button>
               ))}
             </nav>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pb-4 sm:pb-0 sm:mb-4">
               <Link
                 to={`/leagues/${id}/news`}
                 className="relative px-4 py-2 bg-neon/10 text-neon border border-neon/30 hover:bg-neon/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
@@ -443,7 +470,12 @@ export default function LeagueDetailPage() {
         <div className="min-h-[400px]">
           {/* 리그 정보 탭 */}
           {activeTab === 'info' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div
+              id="tabpanel-info"
+              role="tabpanel"
+              aria-labelledby="tab-info"
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+            >
               <div className="bg-carbon-dark border border-steel rounded-xl p-6">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                   <span className="w-1 h-5 bg-neon rounded-full"></span>
@@ -488,7 +520,12 @@ export default function LeagueDetailPage() {
 
           {/* 일정 탭 */}
           {activeTab === 'schedule' && (
-            <div className="bg-carbon-dark border border-steel rounded-xl overflow-hidden">
+            <div
+              id="tabpanel-schedule"
+              role="tabpanel"
+              aria-labelledby="tab-schedule"
+              className="bg-carbon-dark border border-steel rounded-xl overflow-hidden"
+            >
               {isLoadingMatches ? (
                 <div className="p-8 text-center text-text-secondary">로딩 중...</div>
               ) : matches.length === 0 ? (
@@ -541,7 +578,12 @@ export default function LeagueDetailPage() {
 
           {/* 참여 팀 탭 */}
           {activeTab === 'teams' && (
-            isLoadingTeams ? (
+            <div
+              id="tabpanel-teams"
+              role="tabpanel"
+              aria-labelledby="tab-teams"
+            >
+            {isLoadingTeams ? (
               <div className="p-8 text-center text-text-secondary">로딩 중...</div>
             ) : teams.length === 0 ? (
               <div className="bg-carbon-dark border border-steel rounded-xl p-8 text-center text-text-secondary">
@@ -576,12 +618,18 @@ export default function LeagueDetailPage() {
                   </div>
                 ))}
               </div>
-            )
+            )}
+            </div>
           )}
 
           {/* 참여 인원 탭 */}
           {activeTab === 'members' && (
-            <div className="bg-carbon-dark border border-steel rounded-xl overflow-hidden">
+            <div
+              id="tabpanel-members"
+              role="tabpanel"
+              aria-labelledby="tab-members"
+              className="bg-carbon-dark border border-steel rounded-xl overflow-hidden"
+            >
               <div className="px-6 py-4 border-b border-steel">
                 <span className="text-sm text-text-secondary">총 {members.length}명 참여</span>
               </div>
@@ -627,7 +675,12 @@ export default function LeagueDetailPage() {
 
           {/* 자금 관리 탭 */}
           {activeTab === 'finance' && (
-            <div className="space-y-6">
+            <div
+              id="tabpanel-finance"
+              role="tabpanel"
+              aria-labelledby="tab-finance"
+              className="space-y-6"
+            >
               {isLoadingFinance ? (
                 <div className="p-8 text-center text-text-secondary">로딩 중...</div>
               ) : (
@@ -720,10 +773,19 @@ export default function LeagueDetailPage() {
 
       {/* 참가 신청 모달 */}
       {showJoinModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-carbon-dark border border-steel rounded-xl w-full max-w-md">
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={(e) => e.target === e.currentTarget && closeJoinModal()}
+        >
+          <div
+            ref={joinModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="join-modal-title"
+            className="bg-carbon-dark border border-steel rounded-xl w-full max-w-md max-h-[90dvh] overflow-y-auto"
+          >
             <div className="p-6 border-b border-steel">
-              <h3 className="text-xl font-bold text-white">리그 참가 신청</h3>
+              <h3 id="join-modal-title" className="text-xl font-bold text-white">리그 참가 신청</h3>
               <p className="text-sm text-text-secondary mt-1">{league.name}</p>
             </div>
             <form onSubmit={handleJoinSubmit} className="p-6 space-y-4">
@@ -736,12 +798,13 @@ export default function LeagueDetailPage() {
                 <label className="block text-sm font-medium text-white mb-3">
                   역할 선택 <span className="text-racing">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="역할 선택">
                   {ALL_ROLES.map((role) => (
                     <button
                       key={role}
                       type="button"
                       onClick={() => toggleRole(role)}
+                      aria-pressed={joinForm.roles.includes(role)}
                       className={`px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
                         joinForm.roles.includes(role)
                           ? 'bg-neon/10 border-neon text-neon'
@@ -791,11 +854,7 @@ export default function LeagueDetailPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowJoinModal(false)
-                    setJoinForm({ team_name: '', message: '', roles: [] })
-                    setJoinError(null)
-                  }}
+                  onClick={closeJoinModal}
                   className="flex-1 px-4 py-3 bg-steel hover:bg-steel/80 text-white rounded-lg transition-colors"
                 >
                   취소
