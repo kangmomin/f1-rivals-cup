@@ -224,7 +224,7 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
             <div className="bg-carbon border border-steel rounded-lg p-3">
               <label className="block text-sm text-text-secondary mb-2">지출 방식</label>
               <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                   <input
                     type="radio"
                     name="useBalance"
@@ -234,7 +234,7 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
                   />
                   <span className="text-sm text-white">잔액 지출</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                   <input
                     type="radio"
                     name="useBalance"
@@ -286,14 +286,14 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-text-secondary hover:text-white transition-colors text-sm"
+              className="px-4 py-2 text-text-secondary hover:text-white transition-colors text-sm whitespace-nowrap"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="btn-primary text-sm disabled:opacity-50"
+              className="btn-primary text-sm disabled:opacity-50 whitespace-nowrap"
             >
               {isSubmitting ? '처리 중...' : '등록'}
             </button>

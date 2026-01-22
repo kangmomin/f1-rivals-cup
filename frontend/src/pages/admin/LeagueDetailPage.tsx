@@ -416,7 +416,7 @@ export default function LeagueDetailPage() {
           </button>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-white">{league.name}</h1>
-            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${STATUS_COLORS[league.status]}`}>
+            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap ${STATUS_COLORS[league.status]}`}>
               {STATUS_LABELS[league.status]}
             </span>
           </div>
@@ -427,20 +427,20 @@ export default function LeagueDetailPage() {
         </div>
         <button
           onClick={() => navigate(`/admin/leagues`)}
-          className="btn-secondary text-sm"
+          className="btn-secondary text-sm whitespace-nowrap"
         >
           수정
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-steel">
-        <nav className="flex gap-6">
+      <div className="border-b border-steel overflow-x-auto">
+        <nav className="flex gap-6 whitespace-nowrap">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors relative ${
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors relative whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'border-racing text-white'
                   : 'border-transparent text-text-secondary hover:text-white'
@@ -502,7 +502,7 @@ export default function LeagueDetailPage() {
               <span className="text-sm text-text-secondary">총 {teams.length}개 팀</span>
               <button
                 onClick={openCreateTeamModal}
-                className="btn-primary text-sm"
+                className="btn-primary text-sm whitespace-nowrap"
               >
                 팀 추가
               </button>
@@ -545,7 +545,7 @@ export default function LeagueDetailPage() {
                               {team.name}
                             </Link>
                             {team.is_official && (
-                              <span className="px-1.5 py-0.5 bg-racing/10 text-racing rounded text-xs">F1</span>
+                              <span className="px-1.5 py-0.5 bg-racing/10 text-racing rounded text-xs whitespace-nowrap">F1</span>
                             )}
                           </div>
                           {team.color && (
@@ -556,14 +556,14 @@ export default function LeagueDetailPage() {
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => openEditTeamModal(team)}
-                          className="text-neon hover:text-neon-light text-xs"
+                          className="text-neon hover:text-neon-light text-xs whitespace-nowrap"
                         >
                           수정
                         </button>
                         <button
                           onClick={() => handleDeleteTeam(team.id)}
                           disabled={deletingTeamId === team.id}
-                          className="text-loss hover:text-loss/80 text-xs disabled:opacity-50"
+                          className="text-loss hover:text-loss/80 text-xs disabled:opacity-50 whitespace-nowrap"
                         >
                           삭제
                         </button>
@@ -593,13 +593,13 @@ export default function LeagueDetailPage() {
                 <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-steel">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">라운드</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">서킷</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">경기일</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">시간</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase">스프린트</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">상태</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">관리</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">라운드</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">서킷</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">경기일</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">시간</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase whitespace-nowrap">스프린트</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">상태</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">관리</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-steel">
@@ -619,7 +619,7 @@ export default function LeagueDetailPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           {match.has_sprint ? (
-                            <span className="px-2 py-0.5 bg-racing/10 text-racing rounded text-xs">
+                            <span className="px-2 py-0.5 bg-racing/10 text-racing rounded text-xs whitespace-nowrap">
                               스프린트
                             </span>
                           ) : (
@@ -627,14 +627,14 @@ export default function LeagueDetailPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${MATCH_STATUS_COLORS[match.status]}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${MATCH_STATUS_COLORS[match.status]}`}>
                             {MATCH_STATUS_LABELS[match.status]}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <button
                             onClick={() => handleOpenResultsEditor(match)}
-                            className="px-3 py-1 bg-neon/10 text-neon hover:bg-neon/20 rounded text-xs font-medium transition-colors"
+                            className="px-3 py-1 bg-neon/10 text-neon hover:bg-neon/20 rounded text-xs font-medium transition-colors whitespace-nowrap"
                           >
                             결과 입력
                           </button>
@@ -677,14 +677,14 @@ export default function LeagueDetailPage() {
                 <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="border-b border-steel">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">신청자</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">이메일</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">역할</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">팀</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">메시지</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">신청일</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">상태</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">관리</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">신청자</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">이메일</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">역할</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">팀</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">메시지</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">신청일</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">상태</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">관리</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-steel">
@@ -719,7 +719,7 @@ export default function LeagueDetailPage() {
                           {formatDateTime(p.created_at)}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${PARTICIPANT_STATUS_COLORS[p.status]}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${PARTICIPANT_STATUS_COLORS[p.status]}`}>
                             {PARTICIPANT_STATUS_LABELS[p.status]}
                           </span>
                         </td>
@@ -729,14 +729,14 @@ export default function LeagueDetailPage() {
                               <button
                                 onClick={() => handleUpdateStatus(p.id, 'approved')}
                                 disabled={processingId === p.id}
-                                className="px-2 py-1 bg-profit/10 text-profit hover:bg-profit/20 rounded text-xs font-medium disabled:opacity-50"
+                                className="px-2 py-1 bg-profit/10 text-profit hover:bg-profit/20 rounded text-xs font-medium disabled:opacity-50 whitespace-nowrap"
                               >
                                 승인
                               </button>
                               <button
                                 onClick={() => handleUpdateStatus(p.id, 'rejected')}
                                 disabled={processingId === p.id}
-                                className="px-2 py-1 bg-loss/10 text-loss hover:bg-loss/20 rounded text-xs font-medium disabled:opacity-50"
+                                className="px-2 py-1 bg-loss/10 text-loss hover:bg-loss/20 rounded text-xs font-medium disabled:opacity-50 whitespace-nowrap"
                               >
                                 거절
                               </button>
@@ -767,11 +767,11 @@ export default function LeagueDetailPage() {
               <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="border-b border-steel">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">닉네임</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">이메일</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">역할</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">팀 배정</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">참여일</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">닉네임</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">이메일</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">역할</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">팀 배정</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">참여일</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-steel">
@@ -783,7 +783,7 @@ export default function LeagueDetailPage() {
                         <div className="flex flex-nowrap gap-1">
                           {p.roles && p.roles.length > 0 ? (
                             p.roles.map((role) => (
-                              <span key={role} className="px-1.5 py-0.5 bg-neon/10 text-neon rounded text-xs">
+                              <span key={role} className="px-1.5 py-0.5 bg-neon/10 text-neon rounded text-xs whitespace-nowrap">
                                 {ROLE_LABELS[role as ParticipantRole]}
                               </span>
                             ))
@@ -835,7 +835,7 @@ export default function LeagueDetailPage() {
               <h3 className="text-lg font-medium text-white">자금 관리</h3>
               <button
                 onClick={() => setShowTransactionForm(true)}
-                className="btn-primary text-sm"
+                className="btn-primary text-sm whitespace-nowrap"
               >
                 새 거래 생성
               </button>
@@ -858,7 +858,7 @@ export default function LeagueDetailPage() {
                         className="flex items-center justify-between p-3 bg-carbon rounded-lg"
                       >
                         <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 rounded text-xs ${
+                          <span className={`px-2 py-1 rounded text-xs whitespace-nowrap ${
                             account.owner_type === 'system' ? 'bg-racing/10 text-racing' :
                             account.owner_type === 'team' ? 'bg-neon/10 text-neon' :
                             'bg-steel text-text-secondary'
@@ -931,7 +931,7 @@ export default function LeagueDetailPage() {
                         setTeamForm({ name: '', color: '#3B82F6', is_official: true })
                         setSelectedOfficialTeam('')
                       }}
-                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                         teamType === 'official'
                           ? 'bg-racing text-white'
                           : 'bg-carbon border border-steel text-text-secondary hover:text-white'
@@ -946,7 +946,7 @@ export default function LeagueDetailPage() {
                         setTeamForm({ name: '', color: '#3B82F6', is_official: false })
                         setSelectedOfficialTeam('')
                       }}
-                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                         teamType === 'custom'
                           ? 'bg-neon text-black'
                           : 'bg-carbon border border-steel text-text-secondary hover:text-white'
@@ -1046,14 +1046,14 @@ export default function LeagueDetailPage() {
                 <button
                   type="button"
                   onClick={closeTeamModal}
-                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors text-sm"
+                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors text-sm whitespace-nowrap"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingTeam || (!editingTeam && teamType === 'official' && getAvailableOfficialTeams().length === 0)}
-                  className="btn-primary text-sm disabled:opacity-50"
+                  className="btn-primary text-sm disabled:opacity-50 whitespace-nowrap"
                 >
                   {isSubmittingTeam ? '저장 중...' : editingTeam ? '수정' : '추가'}
                 </button>

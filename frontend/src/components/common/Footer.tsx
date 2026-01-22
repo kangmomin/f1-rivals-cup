@@ -35,9 +35,9 @@ export default function Footer() {
 
         {/* Bottom Links */}
         <div className="mt-8 pt-4 border-t border-steel flex flex-wrap justify-center gap-6 text-sm text-text-muted">
-          <a href="#" className="hover:text-text-secondary transition-colors">이용약관</a>
-          <a href="#" className="hover:text-text-secondary transition-colors">개인정보처리방침</a>
-          <a href="#" className="hover:text-text-secondary transition-colors">문의하기</a>
+          <a href="#" className="hover:text-text-secondary transition-colors whitespace-nowrap">이용약관</a>
+          <a href="#" className="hover:text-text-secondary transition-colors whitespace-nowrap">개인정보처리방침</a>
+          <a href="#" className="hover:text-text-secondary transition-colors whitespace-nowrap">문의하기</a>
         </div>
       </div>
     </footer>

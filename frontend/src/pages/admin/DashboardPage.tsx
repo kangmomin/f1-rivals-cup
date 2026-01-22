@@ -409,7 +409,7 @@ export default function DashboardPage() {
       <div className="bg-carbon-dark border border-steel rounded-lg max-h-[400px] flex flex-col">
         <div className="px-4 py-3 border-b border-steel flex items-center justify-between flex-shrink-0">
           <h2 className="text-lg font-medium text-white">리그 관리</h2>
-          <button onClick={openCreateModal} className="btn-primary text-sm">
+          <button onClick={openCreateModal} className="btn-primary text-sm whitespace-nowrap">
             새 리그 생성
           </button>
         </div>
@@ -425,19 +425,19 @@ export default function DashboardPage() {
           <table className="w-full">
             <thead className="sticky top-0 bg-carbon-dark">
               <tr className="border-b border-steel">
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   리그명
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   시즌
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   기간
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   상태
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   작업
                 </th>
               </tr>
@@ -473,20 +473,20 @@ export default function DashboardPage() {
                       {formatDate(league.start_date)} ~ {formatDate(league.end_date)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[league.status]}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${STATUS_COLORS[league.status]}`}>
                         {STATUS_LABELS[league.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right space-x-2">
+                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                       <button
                         onClick={() => openEditModal(league)}
-                        className="text-xs text-neon hover:text-neon-light transition-colors"
+                        className="text-xs text-neon hover:text-neon-light transition-colors whitespace-nowrap"
                       >
                         수정
                       </button>
                       <button
                         onClick={() => handleDeleteLeague(league.id)}
-                        className="text-xs text-loss hover:text-loss/80 transition-colors"
+                        className="text-xs text-loss hover:text-loss/80 transition-colors whitespace-nowrap"
                       >
                         삭제
                       </button>
@@ -504,7 +504,7 @@ export default function DashboardPage() {
             <button
               onClick={() => setLeaguePage((p) => Math.max(1, p - 1))}
               disabled={leaguePage === 1}
-              className="px-3 py-1 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+              className="px-3 py-1 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary whitespace-nowrap"
             >
               이전
             </button>
@@ -514,7 +514,7 @@ export default function DashboardPage() {
             <button
               onClick={() => setLeaguePage((p) => Math.min(leagueTotalPages, p + 1))}
               disabled={leaguePage === leagueTotalPages}
-              className="px-3 py-1 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+              className="px-3 py-1 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary whitespace-nowrap"
             >
               다음
             </button>
@@ -551,14 +551,14 @@ export default function DashboardPage() {
               <option value="STAFF">스태프</option>
               <option value="ADMIN">관리자</option>
             </select>
-            <button type="submit" className="btn-primary text-sm">
+            <button type="submit" className="btn-primary text-sm whitespace-nowrap">
               검색
             </button>
             {(userSearch || roleFilter) && (
               <button
                 type="button"
                 onClick={handleClearUserSearch}
-                className="px-3 py-2 text-sm text-text-secondary hover:text-white transition-colors"
+                className="px-3 py-2 text-sm text-text-secondary hover:text-white transition-colors whitespace-nowrap"
               >
                 초기화
               </button>
@@ -577,19 +577,19 @@ export default function DashboardPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-steel">
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   유저
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   역할
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   권한
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   가입일
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">
+                <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase whitespace-nowrap">
                   작업
                 </th>
               </tr>
@@ -617,7 +617,7 @@ export default function DashboardPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[user.role] || ROLE_COLORS.USER}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${ROLE_COLORS[user.role] || ROLE_COLORS.USER}`}>
                         {ROLE_LABELS[user.role] || '일반 유저'}
                       </span>
                     </td>
@@ -638,7 +638,7 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => openPermissionModal(user)}
-                        className="text-xs text-neon hover:text-neon-light transition-colors"
+                        className="text-xs text-neon hover:text-neon-light transition-colors whitespace-nowrap"
                       >
                         권한 편집
                       </button>
@@ -656,7 +656,7 @@ export default function DashboardPage() {
             <button
               onClick={() => setUserPage((p) => Math.max(1, p - 1))}
               disabled={userPage === 1}
-              className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+              className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary whitespace-nowrap"
             >
               이전
             </button>
@@ -666,7 +666,7 @@ export default function DashboardPage() {
             <button
               onClick={() => setUserPage((p) => Math.min(userTotalPages, p + 1))}
               disabled={userPage === userTotalPages}
-              className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+              className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary whitespace-nowrap"
             >
               다음
             </button>
@@ -696,10 +696,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-steel flex-shrink-0">
+            <div className="flex border-b border-steel flex-shrink-0 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('edit')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === 'edit'
                     ? 'text-neon border-b-2 border-neon'
                     : 'text-text-secondary hover:text-white'
@@ -709,7 +709,7 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === 'history'
                     ? 'text-neon border-b-2 border-neon'
                     : 'text-text-secondary hover:text-white'
@@ -733,12 +733,12 @@ export default function DashboardPage() {
                     <label className="block text-sm font-medium text-white mb-3">
                       역할 (Role)
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 overflow-x-auto">
                       {rolesList.map((role) => (
                         <button
                           key={role.code}
                           onClick={() => setSelectedRole(role.code as UserRole)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                             selectedRole === role.code
                               ? 'bg-neon text-carbon'
                               : 'bg-steel/30 text-text-secondary hover:bg-steel/50'
@@ -819,7 +819,7 @@ export default function DashboardPage() {
                         className="bg-steel/20 rounded-lg p-4"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${
                             history.change_type === 'ROLE'
                               ? 'bg-racing/10 text-racing'
                               : 'bg-neon/10 text-neon'
@@ -860,14 +860,14 @@ export default function DashboardPage() {
               <div className="px-6 py-4 border-t border-steel flex justify-end gap-3 flex-shrink-0">
                 <button
                   onClick={closePermissionModal}
-                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors"
+                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors whitespace-nowrap"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleSavePermissions}
                   disabled={isPermissionLoading}
-                  className="btn-primary disabled:opacity-50"
+                  className="btn-primary disabled:opacity-50 whitespace-nowrap"
                 >
                   {isPermissionLoading ? '저장 중...' : '저장'}
                 </button>
@@ -1035,14 +1035,14 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors"
+                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors whitespace-nowrap"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="btn-primary disabled:opacity-50"
+                  className="btn-primary disabled:opacity-50 whitespace-nowrap"
                 >
                   {isSubmitting ? (editingLeague ? '수정 중...' : '생성 중...') : (editingLeague ? '리그 수정' : '리그 생성')}
                 </button>

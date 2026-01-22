@@ -269,7 +269,7 @@ export default function NewsEditorPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowAIModal(true)}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600 to-neon text-white hover:from-purple-500 hover:to-neon-light transition-all flex items-center gap-2"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600 to-neon text-white hover:from-purple-500 hover:to-neon-light transition-all flex items-center gap-2 whitespace-nowrap"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -278,7 +278,7 @@ export default function NewsEditorPage() {
             </button>
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 showPreview
                   ? 'bg-neon text-black'
                   : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white'
@@ -382,14 +382,14 @@ export default function NewsEditorPage() {
         <div className="flex items-center justify-between mt-6">
           <Link
             to={currentLeagueId ? `/leagues/${currentLeagueId}/news` : '/'}
-            className="px-6 py-3 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors"
+            className="px-6 py-3 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
           >
             취소
           </Link>
           <button
             onClick={() => handleSave(true)}
             disabled={isSaving}
-            className="btn-primary px-6 py-3 disabled:opacity-50"
+            className="btn-primary px-6 py-3 disabled:opacity-50 whitespace-nowrap"
           >
             {isSaving ? '저장 중...' : mode === 'create' ? '발행하기' : '저장하기'}
           </button>
@@ -554,7 +554,7 @@ export default function NewsEditorPage() {
                 <>
                   <button
                     onClick={handleCloseModal}
-                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
                     disabled={isGenerating}
                   >
                     취소
@@ -562,7 +562,7 @@ export default function NewsEditorPage() {
                   <button
                     onClick={handleAIGenerate}
                     disabled={isGenerating || !aiInput.trim()}
-                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-neon text-white rounded-lg font-medium hover:from-purple-500 hover:to-neon-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-neon text-white rounded-lg font-medium hover:from-purple-500 hover:to-neon-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
                   >
                     {isGenerating ? (
                       <>
@@ -581,13 +581,13 @@ export default function NewsEditorPage() {
                 <>
                   <button
                     onClick={() => setGeneratedContent(null)}
-                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
                   >
                     다시 생성
                   </button>
                   <button
                     onClick={handleInsertContent}
-                    className="px-6 py-2 bg-neon text-black rounded-lg font-medium hover:bg-neon-light transition-colors"
+                    className="px-6 py-2 bg-neon text-black rounded-lg font-medium hover:bg-neon-light transition-colors whitespace-nowrap"
                   >
                     에디터에 삽입
                   </button>

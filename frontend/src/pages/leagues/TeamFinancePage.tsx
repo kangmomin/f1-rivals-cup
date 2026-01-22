@@ -141,9 +141,9 @@ export default function TeamFinancePage() {
                 {isDirector && account && (
                   <button
                     onClick={() => setShowTransactionForm(true)}
-                    className="btn-primary text-sm flex items-center gap-2"
+                    className="btn-primary text-sm flex items-center gap-2 whitespace-nowrap"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                     거래 생성

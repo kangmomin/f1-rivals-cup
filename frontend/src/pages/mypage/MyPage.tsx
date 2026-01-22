@@ -114,13 +114,13 @@ export default function MyPage() {
                     <Link to={`/leagues/${p.league_id}`} className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-white font-medium hover:text-neon">{p.league_name || '리그'}</h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PARTICIPANT_STATUS_COLORS[p.status]}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${PARTICIPANT_STATUS_COLORS[p.status]}`}>
                           {PARTICIPANT_STATUS_LABELS[p.status]}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {p.roles && p.roles.length > 0 && p.roles.map((role) => (
-                          <span key={role} className="px-2 py-0.5 bg-neon/10 text-neon rounded text-xs">
+                          <span key={role} className="px-2 py-0.5 bg-neon/10 text-neon rounded text-xs whitespace-nowrap">
                             {ROLE_LABELS[role as ParticipantRole]}
                           </span>
                         ))}
@@ -134,7 +134,7 @@ export default function MyPage() {
                       {(p.status === 'pending' || p.status === 'rejected') && (
                         <button
                           onClick={(e) => handleDeleteParticipation(p.league_id, e)}
-                          className="px-3 py-1.5 bg-loss/10 text-loss hover:bg-loss/20 rounded text-xs font-medium"
+                          className="px-3 py-1.5 bg-loss/10 text-loss hover:bg-loss/20 rounded text-xs font-medium whitespace-nowrap"
                         >
                           {p.status === 'pending' ? '취소' : '삭제'}
                         </button>

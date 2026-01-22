@@ -57,12 +57,12 @@ export default function TransactionHistory({ transactions, currentAccountId }: T
       <table className="w-full min-w-[640px]">
         <thead>
           <tr className="border-b border-steel">
-            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">날짜</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">보낸 계좌</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">받은 계좌</th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">금액</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">카테고리</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">설명</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">날짜</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">보낸 계좌</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">받은 계좌</th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase whitespace-nowrap">금액</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">카테고리</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">설명</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-steel">
@@ -99,7 +99,7 @@ export default function TransactionHistory({ transactions, currentAccountId }: T
                   <span className="text-text-secondary ml-1">원</span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${CATEGORY_COLORS[transaction.category]}`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${CATEGORY_COLORS[transaction.category]}`}>
                     {CATEGORY_LABELS[transaction.category] || transaction.category}
                   </span>
                 </td>

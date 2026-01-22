@@ -89,7 +89,7 @@ export default function LeaguesPage() {
                     S{league.season}
                   </span>
                   <div className="absolute top-3 right-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[league.status]}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[league.status]}`}>
                       {STATUS_LABELS[league.status]}
                     </span>
                   </div>

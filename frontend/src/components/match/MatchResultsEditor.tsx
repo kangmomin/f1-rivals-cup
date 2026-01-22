@@ -289,16 +289,16 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-steel">
-                      <th className="text-left text-text-secondary text-sm font-medium py-3 px-2 w-48">참가자</th>
-                      <th className="text-left text-text-secondary text-sm font-medium py-3 px-2 w-32">팀</th>
-                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-20">순위</th>
-                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-16">포인트</th>
-                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-20">FL</th>
-                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-16">DNF</th>
+                      <th className="text-left text-text-secondary text-sm font-medium py-3 px-2 w-48 whitespace-nowrap">참가자</th>
+                      <th className="text-left text-text-secondary text-sm font-medium py-3 px-2 w-32 whitespace-nowrap">팀</th>
+                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-20 whitespace-nowrap">순위</th>
+                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-16 whitespace-nowrap">포인트</th>
+                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-20 whitespace-nowrap">FL</th>
+                      <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-16 whitespace-nowrap">DNF</th>
                       {match.has_sprint && (
                         <>
-                          <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-20">스프린트</th>
-                          <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-16">SP 포인트</th>
+                          <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-20 whitespace-nowrap">스프린트</th>
+                          <th className="text-center text-text-secondary text-sm font-medium py-3 px-2 w-16 whitespace-nowrap">SP 포인트</th>
                         </>
                       )}
                       <th className="w-12"></th>
@@ -426,7 +426,7 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
               <button
                 onClick={addResultRow}
                 disabled={results.length >= participants.length}
-                className="mt-4 flex items-center gap-2 text-neon hover:text-neon-light disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-4 flex items-center gap-2 text-neon hover:text-neon-light disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -460,14 +460,14 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
         <div className="p-6 border-t border-steel flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-text-secondary hover:text-white transition-colors"
+            className="px-4 py-2 text-text-secondary hover:text-white transition-colors whitespace-nowrap"
           >
             취소
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || results.length === 0}
-            className="btn-primary disabled:opacity-50"
+            className="btn-primary disabled:opacity-50 whitespace-nowrap"
           >
             {isSaving ? '저장 중...' : '저장'}
           </button>

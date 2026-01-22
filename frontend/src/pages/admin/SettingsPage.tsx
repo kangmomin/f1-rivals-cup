@@ -68,7 +68,7 @@ export default function SettingsPage() {
               <p className="text-sm text-white">캐시 초기화</p>
               <p className="text-xs text-text-secondary">모든 캐시 데이터를 삭제합니다</p>
             </div>
-            <button className="px-3 py-1.5 text-sm border border-loss text-loss rounded hover:bg-loss hover:text-white transition-colors">
+            <button className="px-3 py-1.5 text-sm border border-loss text-loss rounded hover:bg-loss hover:text-white transition-colors whitespace-nowrap">
               캐시 초기화
             </button>
           </div>
