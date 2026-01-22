@@ -53,8 +53,8 @@ export default function TransactionHistory({ transactions, currentAccountId }: T
   }
 
   return (
-    <div className="bg-carbon-dark border border-steel rounded-lg overflow-hidden">
-      <table className="w-full">
+    <div className="bg-carbon-dark border border-steel rounded-lg overflow-x-auto">
+      <table className="w-full min-w-[640px]">
         <thead>
           <tr className="border-b border-steel">
             <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">날짜</th>
