@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Account, financeService } from '../../services/finance'
+import { useFocusTrap, useScrollLock } from '../../hooks'
 
 interface TransactionFormProps {
   leagueId: string
@@ -22,6 +23,19 @@ const CATEGORY_OPTIONS = [
 ]
 
 export default function TransactionForm({ leagueId, accounts, onClose, onSuccess, directorMode }: TransactionFormProps) {
+  // 모달이 열려있을 때 ref와 효과 적용
+  const modalRef = useFocusTrap<HTMLDivElement>(true)
+  useScrollLock(true)
+
+  // ESC 키로 닫기
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
   const [fromAccountId, setFromAccountId] = useState(directorMode?.fromAccountId || '')
   const [toAccountId, setToAccountId] = useState('')
   const [amount, setAmount] = useState('')
@@ -123,9 +137,15 @@ export default function TransactionForm({ leagueId, accounts, onClose, onSuccess
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-carbon-dark border border-steel rounded-xl p-6 w-full max-w-md">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transaction-form-title"
+        className="bg-carbon-dark border border-steel rounded-xl p-6 w-full max-w-md max-h-[90dvh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium text-white">새 거래 등록</h3>
+          <h3 id="transaction-form-title" className="text-lg font-medium text-white">새 거래 등록</h3>
           <button
             onClick={onClose}
             aria-label="닫기"
