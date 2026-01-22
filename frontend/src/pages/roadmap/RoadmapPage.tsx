@@ -121,9 +121,9 @@ export default function RoadmapPage() {
         </div>
 
         {/* Legend */}
-        <div className="flex justify-center gap-6 mb-12">
+        <div className="flex justify-center gap-6 mb-12 overflow-x-auto">
           {Object.entries(STATUS_CONFIG).map(([status, config]) => (
-            <div key={status} className="flex items-center gap-2">
+            <div key={status} className="flex items-center gap-2 whitespace-nowrap">
               <span className={`w-3 h-3 rounded-full ${config.bgColor} border ${config.borderColor}`} />
               <span className={`text-sm ${config.color}`}>{config.label}</span>
             </div>
@@ -167,12 +167,12 @@ export default function RoadmapPage() {
                       <h3 className="text-lg font-bold text-white">{item.title}</h3>
                       <div className="flex items-center gap-2 shrink-0">
                         {item.quarter && (
-                          <span className="text-xs text-text-secondary bg-carbon px-2 py-1 rounded">
+                          <span className="text-xs text-text-secondary bg-carbon px-2 py-1 rounded whitespace-nowrap">
                             {item.quarter}
                           </span>
                         )}
                         <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color} border ${statusConfig.borderColor}`}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusConfig.bgColor} ${statusConfig.color} border ${statusConfig.borderColor}`}
                         >
                           {statusConfig.label}
                         </span>

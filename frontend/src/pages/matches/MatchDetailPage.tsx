@@ -130,7 +130,7 @@ export default function MatchDetailPage() {
               ROUND {match.round}
             </span>
             <div className="absolute top-4 right-4">
-              <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${MATCH_STATUS_COLORS[match.status]}`}>
+              <span className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${MATCH_STATUS_COLORS[match.status]}`}>
                 {MATCH_STATUS_LABELS[match.status]}
               </span>
             </div>
@@ -141,7 +141,7 @@ export default function MatchDetailPage() {
               <span>{formatDate(match.match_date)}</span>
               {match.match_time && <span>· {match.match_time}</span>}
               {match.has_sprint && (
-                <span className="px-2 py-0.5 bg-racing/10 text-racing rounded text-sm">
+                <span className="px-2 py-0.5 bg-racing/10 text-racing rounded text-sm whitespace-nowrap">
                   Sprint Weekend
                 </span>
               )}
@@ -164,11 +164,11 @@ export default function MatchDetailPage() {
               <table className="w-full min-w-[480px]">
                 <thead>
                   <tr className="border-b border-steel">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase w-16">순위</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">선수</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">팀</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase w-16">FL</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase w-20">포인트</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap w-16">순위</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">선수</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">팀</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-text-secondary uppercase whitespace-nowrap w-16">FL</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase whitespace-nowrap w-20">포인트</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-steel">
@@ -181,7 +181,7 @@ export default function MatchDetailPage() {
                     >
                       <td className="px-4 py-3">
                         {result.dnf ? (
-                          <span className="px-2 py-1 bg-loss/10 text-loss rounded text-xs font-medium">
+                          <span className="px-2 py-1 bg-loss/10 text-loss rounded text-xs font-medium whitespace-nowrap">
                             DNF
                           </span>
                         ) : result.position ? (
@@ -240,10 +240,10 @@ export default function MatchDetailPage() {
                 <table className="w-full min-w-[400px]">
                   <thead>
                     <tr className="border-b border-steel">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase w-16">순위</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">선수</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">팀</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase w-20">포인트</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap w-16">순위</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">선수</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">팀</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase whitespace-nowrap w-20">포인트</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-steel">

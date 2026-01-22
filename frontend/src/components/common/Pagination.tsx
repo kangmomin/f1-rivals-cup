@@ -49,7 +49,7 @@ export default function Pagination({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-3 sm:px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+        className="px-3 sm:px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target whitespace-nowrap"
         aria-label="이전 페이지"
       >
         <span className="hidden sm:inline">이전</span>
@@ -87,7 +87,7 @@ export default function Pagination({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-3 sm:px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+        className="px-3 sm:px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target whitespace-nowrap"
         aria-label="다음 페이지"
       >
         <span className="hidden sm:inline">다음</span>

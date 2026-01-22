@@ -176,7 +176,7 @@ export default function TeamDetailPage() {
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-white">{team.name}</h1>
                 {team.is_official && (
-                  <span className="px-2 py-0.5 bg-racing/10 text-racing rounded text-xs font-medium">F1</span>
+                  <span className="px-2 py-0.5 bg-racing/10 text-racing rounded text-xs font-medium whitespace-nowrap">F1</span>
                 )}
               </div>
               <p className="text-text-secondary mt-1">
@@ -189,7 +189,7 @@ export default function TeamDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-steel overflow-x-auto">
-        <nav className="flex gap-6 min-w-max">
+        <nav className="flex gap-6 whitespace-nowrap">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -257,7 +257,7 @@ export default function TeamDetailPage() {
                         {member.roles.map((role) => (
                           <span
                             key={role}
-                            className="px-1.5 py-0.5 bg-neon/10 text-neon rounded text-xs"
+                            className="px-1.5 py-0.5 bg-neon/10 text-neon rounded text-xs whitespace-nowrap"
                           >
                             {ROLE_LABELS[role as ParticipantRole]}
                           </span>
@@ -305,7 +305,7 @@ export default function TeamDetailPage() {
                     <button
                       onClick={handleUpdateBalance}
                       disabled={isUpdatingBalance}
-                      className="btn-primary text-sm disabled:opacity-50"
+                      className="btn-primary text-sm disabled:opacity-50 whitespace-nowrap"
                     >
                       {isUpdatingBalance ? '저장 중...' : '저장'}
                     </button>

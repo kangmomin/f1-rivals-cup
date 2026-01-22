@@ -57,7 +57,7 @@ export default function Header() {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="text-text-secondary hover:text-white transition-colors duration-150 font-medium"
+                        className="text-text-secondary hover:text-white transition-colors duration-150 font-medium whitespace-nowrap"
                       >
                         로그아웃
                       </button>
@@ -72,7 +72,7 @@ export default function Header() {
                       </Link>
                       <Link
                         to="/register"
-                        className="btn-primary"
+                        className="btn-primary whitespace-nowrap"
                       >
                         회원가입
                       </Link>

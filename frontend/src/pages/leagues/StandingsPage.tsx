@@ -135,15 +135,15 @@ export default function StandingsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-steel bg-carbon">
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 sticky left-0 bg-carbon z-10">순위</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-text-secondary uppercase sticky left-16 bg-carbon z-10">드라이버</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-text-secondary uppercase">팀</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-24">포인트</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">우승</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">포디움</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">FL</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">DNF</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">출전</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 sticky left-0 bg-carbon z-10 whitespace-nowrap">순위</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-text-secondary uppercase sticky left-16 bg-carbon z-10 whitespace-nowrap">드라이버</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-text-secondary uppercase whitespace-nowrap">팀</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-24 whitespace-nowrap">포인트</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">우승</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">포디움</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">FL</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">DNF</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">출전</th>
                 </tr>
               </thead>
               <tbody>
@@ -223,14 +223,14 @@ export default function StandingsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-steel bg-carbon">
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 sticky left-0 bg-carbon z-10">순위</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-text-secondary uppercase sticky left-16 bg-carbon z-10">팀</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-24">포인트</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">우승</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">포디움</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">FL</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">DNF</th>
-                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16">드라이버</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 sticky left-0 bg-carbon z-10 whitespace-nowrap">순위</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-text-secondary uppercase sticky left-16 bg-carbon z-10 whitespace-nowrap">팀</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-24 whitespace-nowrap">포인트</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">우승</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">포디움</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">FL</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">DNF</th>
+                  <th className="px-4 py-4 text-center text-xs font-medium text-text-secondary uppercase w-16 whitespace-nowrap">드라이버</th>
                 </tr>
               </thead>
               <tbody>

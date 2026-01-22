@@ -66,14 +66,14 @@ export default function UsersPage() {
           onChange={(e) => setSearchInput(e.target.value)}
           className="input flex-1 max-w-md"
         />
-        <button type="submit" className="btn-primary">
+        <button type="submit" className="btn-primary whitespace-nowrap">
           검색
         </button>
         {searchTerm && (
           <button
             type="button"
             onClick={handleClearSearch}
-            className="px-4 py-2 text-text-secondary hover:text-white transition-colors"
+            className="px-4 py-2 text-text-secondary hover:text-white transition-colors whitespace-nowrap"
           >
             초기화
           </button>
@@ -92,16 +92,16 @@ export default function UsersPage() {
         <table className="w-full min-w-[480px]">
           <thead>
             <tr className="border-b border-steel">
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider whitespace-nowrap">
                 회원
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider whitespace-nowrap">
                 이메일 인증
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider whitespace-nowrap">
                 가입일
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider whitespace-nowrap">
                 작업
               </th>
             </tr>
@@ -132,7 +132,7 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${
                         user.email_verified
                           ? 'bg-profit/10 text-profit'
                           : 'bg-loss/10 text-loss'
@@ -145,7 +145,7 @@ export default function UsersPage() {
                     {new Date(user.created_at).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button className="text-xs text-neon hover:text-neon-light transition-colors">
+                    <button className="text-xs text-neon hover:text-neon-light transition-colors whitespace-nowrap">
                       상세보기
                     </button>
                   </td>
@@ -162,7 +162,7 @@ export default function UsersPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+            className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary whitespace-nowrap"
           >
             이전
           </button>
@@ -172,7 +172,7 @@ export default function UsersPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary"
+            className="px-3 py-1.5 text-sm border border-steel rounded hover:bg-steel/50 disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary whitespace-nowrap"
           >
             다음
           </button>

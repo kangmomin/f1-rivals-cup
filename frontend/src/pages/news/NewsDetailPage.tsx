@@ -194,7 +194,7 @@ export default function NewsDetailPage() {
           <div className="p-8 border-b border-steel">
             <div className="flex items-center gap-2 mb-4">
               {!news.is_published && (
-                <span className="px-3 py-1 bg-warning/10 text-warning border border-warning/30 rounded-full text-sm font-medium">
+                <span className="px-3 py-1 bg-warning/10 text-warning border border-warning/30 rounded-full text-sm font-medium whitespace-nowrap">
                   임시저장
                 </span>
               )}
@@ -217,7 +217,7 @@ export default function NewsDetailPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handlePublishToggle}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                       news.is_published
                         ? 'bg-warning/10 text-warning border border-warning/30 hover:bg-warning/20'
                         : 'bg-profit/10 text-profit border border-profit/30 hover:bg-profit/20'
@@ -227,14 +227,14 @@ export default function NewsDetailPage() {
                   </button>
                   <Link
                     to={`/news/${news.id}/edit`}
-                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg text-sm font-medium transition-colors"
+                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
                   >
                     수정
                   </Link>
                   {canDelete && (
                     <button
                       onClick={handleDelete}
-                      className="px-4 py-2 bg-loss/10 text-loss border border-loss/30 hover:bg-loss/20 rounded-lg text-sm font-medium transition-colors"
+                      className="px-4 py-2 bg-loss/10 text-loss border border-loss/30 hover:bg-loss/20 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
                     >
                       삭제
                     </button>
@@ -300,7 +300,7 @@ export default function NewsDetailPage() {
                 <button
                   type="submit"
                   disabled={isSubmittingComment || !newComment.trim()}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {isSubmittingComment ? '작성 중...' : '댓글 작성'}
                 </button>
@@ -343,13 +343,13 @@ export default function NewsDetailPage() {
                             setEditingCommentId(null)
                             setEditingCommentContent('')
                           }}
-                          className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg text-sm transition-colors"
+                          className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg text-sm transition-colors whitespace-nowrap"
                         >
                           취소
                         </button>
                         <button
                           onClick={() => handleEditComment(comment.id)}
-                          className="btn-primary text-sm"
+                          className="btn-primary text-sm whitespace-nowrap"
                         >
                           저장
                         </button>
@@ -407,7 +407,7 @@ export default function NewsDetailPage() {
               <button
                 onClick={() => setCommentPage(p => Math.max(1, p - 1))}
                 disabled={commentPage === 1}
-                className="px-3 py-1 bg-carbon-dark border border-steel rounded text-text-secondary hover:text-white text-sm disabled:opacity-50"
+                className="px-3 py-1 bg-carbon-dark border border-steel rounded text-text-secondary hover:text-white text-sm disabled:opacity-50 whitespace-nowrap"
               >
                 이전
               </button>
@@ -417,7 +417,7 @@ export default function NewsDetailPage() {
               <button
                 onClick={() => setCommentPage(p => Math.min(commentTotalPages, p + 1))}
                 disabled={commentPage === commentTotalPages}
-                className="px-3 py-1 bg-carbon-dark border border-steel rounded text-text-secondary hover:text-white text-sm disabled:opacity-50"
+                className="px-3 py-1 bg-carbon-dark border border-steel rounded text-text-secondary hover:text-white text-sm disabled:opacity-50 whitespace-nowrap"
               >
                 다음
               </button>

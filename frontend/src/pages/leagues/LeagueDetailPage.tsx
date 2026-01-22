@@ -349,7 +349,7 @@ export default function LeagueDetailPage() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold text-white">{league.name}</h1>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[league.status]}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${STATUS_COLORS[league.status]}`}>
                     {STATUS_LABELS[league.status]}
                   </span>
                 </div>
@@ -359,14 +359,14 @@ export default function LeagueDetailPage() {
                 </p>
               </div>
               {league.status === 'open' && !isParticipating && (
-                <button className="btn-primary" onClick={handleJoinClick}>
+                <button className="btn-primary whitespace-nowrap" onClick={handleJoinClick}>
                   참가 신청
                 </button>
               )}
               {isParticipating && participant && (
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${
                       participant.status === 'pending' ? 'bg-warning/10 text-warning border border-warning/30' :
                       participant.status === 'approved' ? 'bg-profit/10 text-profit border border-profit/30' :
                       'bg-loss/10 text-loss border border-loss/30'
@@ -376,9 +376,9 @@ export default function LeagueDetailPage() {
                     {participant.status === 'approved' && (
                       <Link
                         to={`/leagues/${id}/my-finance`}
-                        className="btn-secondary text-sm flex items-center gap-1"
+                        className="btn-secondary text-sm flex items-center gap-1 whitespace-nowrap"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         내 자금
@@ -387,7 +387,7 @@ export default function LeagueDetailPage() {
                     {participant.status === 'pending' && (
                       <button
                         onClick={handleCancelParticipation}
-                        className="btn-secondary text-sm"
+                        className="btn-secondary text-sm whitespace-nowrap"
                       >
                         신청 취소
                       </button>
@@ -395,16 +395,16 @@ export default function LeagueDetailPage() {
                     {participant.status === 'rejected' && (
                       <button
                         onClick={handleCancelParticipation}
-                        className="btn-secondary text-sm"
+                        className="btn-secondary text-sm whitespace-nowrap"
                       >
                         삭제 후 재신청
                       </button>
                     )}
                   </div>
                   {participant.roles && participant.roles.length > 0 && (
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap gap-1.5">
                       {participant.roles.map((role) => (
-                        <span key={role} className="px-2 py-0.5 bg-steel/50 rounded text-xs text-text-secondary">
+                        <span key={role} className="px-2 py-0.5 bg-steel/50 rounded text-xs text-text-secondary whitespace-nowrap">
                           {ROLE_LABELS[role as ParticipantRole]}
                         </span>
                       ))}
@@ -441,9 +441,9 @@ export default function LeagueDetailPage() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pb-4 sm:pb-0 sm:mb-4">
               <Link
                 to={`/leagues/${id}/news`}
-                className="relative px-4 py-2 bg-neon/10 text-neon border border-neon/30 hover:bg-neon/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className="relative px-4 py-2 bg-neon/10 text-neon border border-neon/30 hover:bg-neon/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                 </svg>
                 뉴스
@@ -455,9 +455,9 @@ export default function LeagueDetailPage() {
               </Link>
               <Link
                 to={`/leagues/${id}/standings`}
-                className="px-4 py-2 bg-racing/10 text-racing border border-racing/30 hover:bg-racing/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-racing/10 text-racing border border-racing/30 hover:bg-racing/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 순위표
@@ -555,7 +555,7 @@ export default function LeagueDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
                           match.status === 'completed' ? 'bg-profit/10 text-profit border border-profit/30' :
                           match.status === 'in_progress' ? 'bg-racing/10 text-racing border border-racing/30' :
                           match.status === 'cancelled' ? 'bg-loss/10 text-loss border border-loss/30' :
@@ -652,11 +652,11 @@ export default function LeagueDetailPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex flex-wrap gap-1.5">
                         {member.roles && member.roles.map((role) => (
                           <span
                             key={role}
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                               role === 'player' ? 'bg-neon/10 text-neon border border-neon/30' :
                               role === 'director' ? 'bg-racing/10 text-racing border border-racing/30' :
                               'bg-steel text-text-secondary'
@@ -695,9 +695,9 @@ export default function LeagueDetailPage() {
                         </h3>
                         <button
                           onClick={() => setShowTransactionForm(true)}
-                          className="btn-primary text-sm flex items-center gap-2"
+                          className="btn-primary text-sm flex items-center gap-2 whitespace-nowrap"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
                           거래 생성
@@ -855,14 +855,14 @@ export default function LeagueDetailPage() {
                 <button
                   type="button"
                   onClick={closeJoinModal}
-                  className="flex-1 px-4 py-3 bg-steel hover:bg-steel/80 text-white rounded-lg transition-colors"
+                  className="flex-1 px-4 py-3 bg-steel hover:bg-steel/80 text-white rounded-lg transition-colors whitespace-nowrap"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || joinForm.roles.length === 0}
-                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {isSubmitting ? '신청 중...' : '신청하기'}
                 </button>
