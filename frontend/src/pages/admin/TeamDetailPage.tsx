@@ -188,13 +188,13 @@ export default function TeamDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-steel">
-        <nav className="flex gap-6">
+      <div className="border-b border-steel overflow-x-auto">
+        <nav className="flex gap-6 min-w-max">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'border-racing text-white'
                   : 'border-transparent text-text-secondary hover:text-white'

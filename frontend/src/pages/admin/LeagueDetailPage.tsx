@@ -434,13 +434,13 @@ export default function LeagueDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-steel">
-        <nav className="flex gap-6">
+      <div className="border-b border-steel overflow-x-auto">
+        <nav className="flex gap-6 min-w-max">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors relative ${
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors relative whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'border-racing text-white'
                   : 'border-transparent text-text-secondary hover:text-white'
@@ -725,18 +725,18 @@ export default function LeagueDetailPage() {
                         </td>
                         <td className="px-4 py-3">
                           {p.status === 'pending' ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 whitespace-nowrap">
                               <button
                                 onClick={() => handleUpdateStatus(p.id, 'approved')}
                                 disabled={processingId === p.id}
-                                className="px-2 py-1 bg-profit/10 text-profit hover:bg-profit/20 rounded text-xs font-medium disabled:opacity-50"
+                                className="px-2 py-1 bg-profit/10 text-profit hover:bg-profit/20 rounded text-xs font-medium disabled:opacity-50 whitespace-nowrap"
                               >
                                 승인
                               </button>
                               <button
                                 onClick={() => handleUpdateStatus(p.id, 'rejected')}
                                 disabled={processingId === p.id}
-                                className="px-2 py-1 bg-loss/10 text-loss hover:bg-loss/20 rounded text-xs font-medium disabled:opacity-50"
+                                className="px-2 py-1 bg-loss/10 text-loss hover:bg-loss/20 rounded text-xs font-medium disabled:opacity-50 whitespace-nowrap"
                               >
                                 거절
                               </button>
