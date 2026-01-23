@@ -208,3 +208,48 @@ func (r *MatchRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status
 
 	return nil
 }
+
+// ListUpcomingMatches retrieves all matches with upcoming status
+func (r *MatchRepository) ListUpcomingMatches(ctx context.Context) ([]*model.Match, error) {
+	query := `
+		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, status, description, created_at, updated_at
+		FROM matches
+		WHERE status = $1
+		ORDER BY match_date ASC, match_time ASC
+	`
+
+	rows, err := r.db.Pool.QueryContext(ctx, query, model.MatchStatusUpcoming)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var matches []*model.Match
+	for rows.Next() {
+		m := &model.Match{}
+		if err := rows.Scan(
+			&m.ID,
+			&m.LeagueID,
+			&m.Round,
+			&m.Track,
+			&m.MatchDate,
+			&m.MatchTime,
+			&m.HasSprint,
+			&m.SprintDate,
+			&m.SprintTime,
+			&m.Status,
+			&m.Description,
+			&m.CreatedAt,
+			&m.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		matches = append(matches, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}

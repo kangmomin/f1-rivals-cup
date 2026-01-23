@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/f1-rivals-cup/backend/internal/auth"
 	"github.com/f1-rivals-cup/backend/internal/config"
@@ -10,6 +15,7 @@ import (
 	"github.com/f1-rivals-cup/backend/internal/handler"
 	custommiddleware "github.com/f1-rivals-cup/backend/internal/middleware"
 	"github.com/f1-rivals-cup/backend/internal/repository"
+	"github.com/f1-rivals-cup/backend/internal/scheduler"
 	"github.com/f1-rivals-cup/backend/internal/service"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -229,10 +235,39 @@ func main() {
 	meGroup.Use(custommiddleware.AuthMiddleware(jwtService))
 	meGroup.GET("/participations", participantHandler.ListMyParticipations)
 
-	// Start server
-	slog.Info("Starting server", "port", cfg.ServerPort)
-	if err := e.Start(":" + cfg.ServerPort); err != nil {
-		slog.Error("Failed to start server", "error", err)
+	// Initialize and start scheduler
+	ctx, cancel := context.WithCancel(context.Background())
+	matchScheduler := scheduler.New(matchRepo, 10*time.Minute)
+	go matchScheduler.Start(ctx)
+
+	// Start server with graceful shutdown
+	go func() {
+		slog.Info("Starting server", "port", cfg.ServerPort)
+		if err := e.Start(":" + cfg.ServerPort); err != nil && err != http.ErrServerClosed {
+			slog.Error("Failed to start server", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	slog.Info("Shutting down server...")
+
+	// Stop scheduler
+	cancel()
+	matchScheduler.Stop()
+
+	// Graceful shutdown with timeout
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Server forced to shutdown", "error", err)
 		os.Exit(1)
 	}
+
+	slog.Info("Server gracefully stopped")
 }
