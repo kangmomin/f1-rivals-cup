@@ -152,6 +152,8 @@ func main() {
 
 	// Admin match result routes
 	adminGroup.PUT("/matches/:id/results", matchResultHandler.BulkUpdate)
+	adminGroup.PUT("/matches/:id/results/sprint", matchResultHandler.UpdateSprintResults)
+	adminGroup.PUT("/matches/:id/results/race", matchResultHandler.UpdateRaceResults)
 	adminGroup.DELETE("/matches/:id/results", matchResultHandler.Delete)
 
 	// Admin team routes
