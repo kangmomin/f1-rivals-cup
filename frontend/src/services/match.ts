@@ -12,7 +12,7 @@ export interface Match {
   has_sprint: boolean
   sprint_date?: string
   sprint_time?: string
-  sprint_completed: boolean
+  sprint_status: MatchStatus
   status: MatchStatus
   description?: string
   created_at: string
@@ -38,7 +38,7 @@ export interface UpdateMatchRequest {
   has_sprint?: boolean
   sprint_date?: string
   sprint_time?: string
-  sprint_completed?: boolean
+  sprint_status?: MatchStatus
   status?: MatchStatus
   description?: string
 }
@@ -121,6 +121,16 @@ export const matchService = {
 
   async updateResults(matchId: string, results: CreateMatchResultRequest[]): Promise<ListMatchResultsResponse> {
     const response = await api.put<ListMatchResultsResponse>(`/admin/matches/${matchId}/results`, { results })
+    return response.data
+  },
+
+  async updateSprintResults(matchId: string, results: CreateMatchResultRequest[]): Promise<ListMatchResultsResponse> {
+    const response = await api.put<ListMatchResultsResponse>(`/admin/matches/${matchId}/results/sprint`, { results })
+    return response.data
+  },
+
+  async updateRaceResults(matchId: string, results: CreateMatchResultRequest[]): Promise<ListMatchResultsResponse> {
+    const response = await api.put<ListMatchResultsResponse>(`/admin/matches/${matchId}/results/race`, { results })
     return response.data
   },
 

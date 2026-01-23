@@ -26,8 +26,8 @@ func NewMatchRepository(db *database.DB) *MatchRepository {
 // Create creates a new match
 func (r *MatchRepository) Create(ctx context.Context, match *model.Match) error {
 	query := `
-		INSERT INTO matches (league_id, round, track, match_date, match_time, has_sprint, sprint_date, sprint_time, status, description)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO matches (league_id, round, track, match_date, match_time, has_sprint, sprint_date, sprint_time, sprint_status, status, description)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -40,6 +40,7 @@ func (r *MatchRepository) Create(ctx context.Context, match *model.Match) error 
 		match.HasSprint,
 		match.SprintDate,
 		match.SprintTime,
+		match.SprintStatus,
 		match.Status,
 		match.Description,
 	).Scan(&match.ID, &match.CreatedAt, &match.UpdatedAt)
@@ -57,7 +58,7 @@ func (r *MatchRepository) Create(ctx context.Context, match *model.Match) error 
 // GetByID retrieves a match by ID
 func (r *MatchRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Match, error) {
 	query := `
-		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, sprint_completed, status, description, created_at, updated_at
+		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, sprint_status, status, description, created_at, updated_at
 		FROM matches
 		WHERE id = $1
 	`
@@ -73,7 +74,7 @@ func (r *MatchRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Mat
 		&match.HasSprint,
 		&match.SprintDate,
 		&match.SprintTime,
-		&match.SprintCompleted,
+		&match.SprintStatus,
 		&match.Status,
 		&match.Description,
 		&match.CreatedAt,
@@ -93,7 +94,7 @@ func (r *MatchRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Mat
 // ListByLeague retrieves all matches for a league
 func (r *MatchRepository) ListByLeague(ctx context.Context, leagueID uuid.UUID) ([]*model.Match, error) {
 	query := `
-		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, sprint_completed, status, description, created_at, updated_at
+		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, sprint_status, status, description, created_at, updated_at
 		FROM matches
 		WHERE league_id = $1
 		ORDER BY round ASC
@@ -118,7 +119,7 @@ func (r *MatchRepository) ListByLeague(ctx context.Context, leagueID uuid.UUID) 
 			&m.HasSprint,
 			&m.SprintDate,
 			&m.SprintTime,
-			&m.SprintCompleted,
+			&m.SprintStatus,
 			&m.Status,
 			&m.Description,
 			&m.CreatedAt,
@@ -136,7 +137,7 @@ func (r *MatchRepository) ListByLeague(ctx context.Context, leagueID uuid.UUID) 
 func (r *MatchRepository) Update(ctx context.Context, match *model.Match) error {
 	query := `
 		UPDATE matches
-		SET round = $1, track = $2, match_date = $3, match_time = $4, has_sprint = $5, sprint_date = $6, sprint_time = $7, sprint_completed = $8, status = $9, description = $10, updated_at = NOW()
+		SET round = $1, track = $2, match_date = $3, match_time = $4, has_sprint = $5, sprint_date = $6, sprint_time = $7, sprint_status = $8, status = $9, description = $10, updated_at = NOW()
 		WHERE id = $11
 		RETURNING updated_at
 	`
@@ -149,7 +150,7 @@ func (r *MatchRepository) Update(ctx context.Context, match *model.Match) error 
 		match.HasSprint,
 		match.SprintDate,
 		match.SprintTime,
-		match.SprintCompleted,
+		match.SprintStatus,
 		match.Status,
 		match.Description,
 		match.ID,
@@ -197,6 +198,30 @@ func (r *MatchRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status
 	`
 
 	result, err := r.db.Pool.ExecContext(ctx, query, status, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrMatchNotFound
+	}
+
+	return nil
+}
+
+// UpdateSprintStatus updates only the sprint status of a match
+func (r *MatchRepository) UpdateSprintStatus(ctx context.Context, id uuid.UUID, sprintStatus model.MatchStatus) error {
+	query := `
+		UPDATE matches
+		SET sprint_status = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	result, err := r.db.Pool.ExecContext(ctx, query, sprintStatus, id)
 	if err != nil {
 		return err
 	}

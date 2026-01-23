@@ -285,7 +285,7 @@ func (r *MatchResultRepository) GetTeamStandings(ctx context.Context, leagueID u
 	return standings, nil
 }
 
-// BulkUpsert creates or updates multiple results at once
+// BulkUpsert creates or updates multiple results at once (all fields)
 func (r *MatchResultRepository) BulkUpsert(ctx context.Context, matchID uuid.UUID, results []model.CreateMatchResultRequest) error {
 	tx, err := r.db.Pool.BeginTx(ctx, nil)
 	if err != nil {
@@ -319,6 +319,78 @@ func (r *MatchResultRepository) BulkUpsert(ctx context.Context, matchID uuid.UUI
 			result.DNFReason,
 			result.SprintPosition,
 			result.SprintPoints,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// BulkUpsertSprintResults creates or updates sprint results only (sprint_position, sprint_points)
+func (r *MatchResultRepository) BulkUpsertSprintResults(ctx context.Context, matchID uuid.UUID, results []model.CreateMatchResultRequest) error {
+	tx, err := r.db.Pool.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO match_results (match_id, participant_id, sprint_position, sprint_points)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (match_id, participant_id)
+		DO UPDATE SET
+			sprint_position = EXCLUDED.sprint_position,
+			sprint_points = EXCLUDED.sprint_points,
+			updated_at = NOW()
+	`
+
+	for _, result := range results {
+		_, err := tx.ExecContext(ctx, query,
+			matchID,
+			result.ParticipantID,
+			result.SprintPosition,
+			result.SprintPoints,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// BulkUpsertRaceResults creates or updates race results only (position, points, fastest_lap, dnf, dnf_reason)
+func (r *MatchResultRepository) BulkUpsertRaceResults(ctx context.Context, matchID uuid.UUID, results []model.CreateMatchResultRequest) error {
+	tx, err := r.db.Pool.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO match_results (match_id, participant_id, position, points, fastest_lap, dnf, dnf_reason)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (match_id, participant_id)
+		DO UPDATE SET
+			position = EXCLUDED.position,
+			points = EXCLUDED.points,
+			fastest_lap = EXCLUDED.fastest_lap,
+			dnf = EXCLUDED.dnf,
+			dnf_reason = EXCLUDED.dnf_reason,
+			updated_at = NOW()
+	`
+
+	for _, result := range results {
+		_, err := tx.ExecContext(ctx, query,
+			matchID,
+			result.ParticipantID,
+			result.Position,
+			result.Points,
+			result.FastestLap,
+			result.DNF,
+			result.DNFReason,
 		)
 		if err != nil {
 			return err

@@ -68,16 +68,17 @@ func (h *MatchHandler) Create(c echo.Context) error {
 	}
 
 	match := &model.Match{
-		LeagueID:    leagueID,
-		Round:       req.Round,
-		Track:       req.Track,
-		MatchDate:   req.MatchDate,
-		MatchTime:   req.MatchTime,
-		HasSprint:   req.HasSprint,
-		SprintDate:  req.SprintDate,
-		SprintTime:  req.SprintTime,
-		Status:      model.MatchStatusUpcoming,
-		Description: req.Description,
+		LeagueID:     leagueID,
+		Round:        req.Round,
+		Track:        req.Track,
+		MatchDate:    req.MatchDate,
+		MatchTime:    req.MatchTime,
+		HasSprint:    req.HasSprint,
+		SprintDate:   req.SprintDate,
+		SprintTime:   req.SprintTime,
+		SprintStatus: model.MatchStatusUpcoming,
+		Status:       model.MatchStatusUpcoming,
+		Description:  req.Description,
 	}
 
 	if err := h.matchRepo.Create(ctx, match); err != nil {
@@ -218,8 +219,8 @@ func (h *MatchHandler) Update(c echo.Context) error {
 	if req.SprintTime != nil {
 		match.SprintTime = req.SprintTime
 	}
-	if req.SprintCompleted != nil {
-		match.SprintCompleted = *req.SprintCompleted
+	if req.SprintStatus != nil {
+		match.SprintStatus = *req.SprintStatus
 	}
 	if req.Status != nil {
 		match.Status = *req.Status
