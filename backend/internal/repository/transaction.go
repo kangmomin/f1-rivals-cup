@@ -236,6 +236,59 @@ func (r *TransactionRepository) GetAccountWeeklyFlow(ctx context.Context, accoun
 	return weeklyFlow, nil
 }
 
+// GetTeamWeeklyFlows retrieves weekly income/expense flow for all teams in a league (last 12 weeks)
+func (r *TransactionRepository) GetTeamWeeklyFlows(ctx context.Context, leagueID uuid.UUID) ([]model.TeamWeeklyFlow, error) {
+	// Get all team accounts with team info
+	teamAccountQuery := `
+		SELECT a.id, a.owner_id, t.name, COALESCE(t.color, '#3B82F6') as color
+		FROM accounts a
+		JOIN teams t ON a.owner_id = t.id
+		WHERE a.league_id = $1 AND a.owner_type = 'team'
+		ORDER BY t.name
+	`
+	rows, err := r.db.Pool.QueryContext(ctx, teamAccountQuery, leagueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	type teamAccount struct {
+		AccountID uuid.UUID
+		TeamID    uuid.UUID
+		TeamName  string
+		TeamColor string
+	}
+	var teamAccounts []teamAccount
+
+	for rows.Next() {
+		var ta teamAccount
+		if err := rows.Scan(&ta.AccountID, &ta.TeamID, &ta.TeamName, &ta.TeamColor); err != nil {
+			return nil, err
+		}
+		teamAccounts = append(teamAccounts, ta)
+	}
+
+	// For each team, get weekly flows
+	var result []model.TeamWeeklyFlow
+	for _, ta := range teamAccounts {
+		flows, err := r.GetAccountWeeklyFlow(ctx, ta.AccountID)
+		if err != nil {
+			return nil, err
+		}
+		if flows == nil {
+			flows = []model.WeeklyFlow{}
+		}
+		result = append(result, model.TeamWeeklyFlow{
+			TeamID:    ta.TeamID,
+			TeamName:  ta.TeamName,
+			TeamColor: ta.TeamColor,
+			Flows:     flows,
+		})
+	}
+
+	return result, nil
+}
+
 // GetFinanceStats retrieves finance statistics for a league
 func (r *TransactionRepository) GetFinanceStats(ctx context.Context, leagueID uuid.UUID) (*model.FinanceStatsResponse, error) {
 	stats := &model.FinanceStatsResponse{

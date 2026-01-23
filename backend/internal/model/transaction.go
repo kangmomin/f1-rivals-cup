@@ -68,9 +68,17 @@ type WeeklyFlow struct {
 	Expense int64  `json:"expense"`
 }
 
+type TeamWeeklyFlow struct {
+	TeamID    uuid.UUID    `json:"team_id"`
+	TeamName  string       `json:"team_name"`
+	TeamColor string       `json:"team_color"`
+	Flows     []WeeklyFlow `json:"flows"`
+}
+
 type FinanceStatsResponse struct {
 	TotalCirculation int64            `json:"total_circulation"`
 	TeamBalances     []TeamBalance    `json:"team_balances"`
 	CategoryTotals   map[string]int64 `json:"category_totals"`
 	WeeklyFlow       []WeeklyFlow     `json:"weekly_flow"`
+	TeamWeeklyFlows  []TeamWeeklyFlow `json:"team_weekly_flows"`
 }
