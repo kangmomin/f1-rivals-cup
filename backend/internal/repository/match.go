@@ -57,7 +57,7 @@ func (r *MatchRepository) Create(ctx context.Context, match *model.Match) error 
 // GetByID retrieves a match by ID
 func (r *MatchRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Match, error) {
 	query := `
-		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, status, description, created_at, updated_at
+		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, sprint_completed, status, description, created_at, updated_at
 		FROM matches
 		WHERE id = $1
 	`
@@ -73,6 +73,7 @@ func (r *MatchRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Mat
 		&match.HasSprint,
 		&match.SprintDate,
 		&match.SprintTime,
+		&match.SprintCompleted,
 		&match.Status,
 		&match.Description,
 		&match.CreatedAt,
@@ -92,7 +93,7 @@ func (r *MatchRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Mat
 // ListByLeague retrieves all matches for a league
 func (r *MatchRepository) ListByLeague(ctx context.Context, leagueID uuid.UUID) ([]*model.Match, error) {
 	query := `
-		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, status, description, created_at, updated_at
+		SELECT id, league_id, round, track, match_date, match_time::text, has_sprint, sprint_date::text, sprint_time::text, sprint_completed, status, description, created_at, updated_at
 		FROM matches
 		WHERE league_id = $1
 		ORDER BY round ASC
@@ -117,6 +118,7 @@ func (r *MatchRepository) ListByLeague(ctx context.Context, leagueID uuid.UUID) 
 			&m.HasSprint,
 			&m.SprintDate,
 			&m.SprintTime,
+			&m.SprintCompleted,
 			&m.Status,
 			&m.Description,
 			&m.CreatedAt,
@@ -134,8 +136,8 @@ func (r *MatchRepository) ListByLeague(ctx context.Context, leagueID uuid.UUID) 
 func (r *MatchRepository) Update(ctx context.Context, match *model.Match) error {
 	query := `
 		UPDATE matches
-		SET round = $1, track = $2, match_date = $3, match_time = $4, has_sprint = $5, sprint_date = $6, sprint_time = $7, status = $8, description = $9, updated_at = NOW()
-		WHERE id = $10
+		SET round = $1, track = $2, match_date = $3, match_time = $4, has_sprint = $5, sprint_date = $6, sprint_time = $7, sprint_completed = $8, status = $9, description = $10, updated_at = NOW()
+		WHERE id = $11
 		RETURNING updated_at
 	`
 
@@ -147,6 +149,7 @@ func (r *MatchRepository) Update(ctx context.Context, match *model.Match) error 
 		match.HasSprint,
 		match.SprintDate,
 		match.SprintTime,
+		match.SprintCompleted,
 		match.Status,
 		match.Description,
 		match.ID,

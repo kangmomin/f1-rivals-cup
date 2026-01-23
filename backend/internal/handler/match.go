@@ -218,6 +218,9 @@ func (h *MatchHandler) Update(c echo.Context) error {
 	if req.SprintTime != nil {
 		match.SprintTime = req.SprintTime
 	}
+	if req.SprintCompleted != nil {
+		match.SprintCompleted = *req.SprintCompleted
+	}
 	if req.Status != nil {
 		match.Status = *req.Status
 	}

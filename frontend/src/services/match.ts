@@ -12,6 +12,7 @@ export interface Match {
   has_sprint: boolean
   sprint_date?: string
   sprint_time?: string
+  sprint_completed: boolean
   status: MatchStatus
   description?: string
   created_at: string
@@ -37,6 +38,7 @@ export interface UpdateMatchRequest {
   has_sprint?: boolean
   sprint_date?: string
   sprint_time?: string
+  sprint_completed?: boolean
   status?: MatchStatus
   description?: string
 }
