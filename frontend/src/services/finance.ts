@@ -42,8 +42,8 @@ export interface TeamBalance {
   balance: number
 }
 
-export interface MonthlyFlow {
-  month: string
+export interface WeeklyFlow {
+  week: string // 'IYYY-IW' 형식 (ISO week)
   income: number
   expense: number
 }
@@ -52,7 +52,7 @@ export interface FinanceStats {
   total_circulation: number
   team_balances: TeamBalance[]
   category_totals: Record<string, number>
-  monthly_flow: MonthlyFlow[]
+  weekly_flow: WeeklyFlow[]
 }
 
 export const financeService = {

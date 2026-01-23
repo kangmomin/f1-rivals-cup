@@ -471,8 +471,8 @@ func (h *FinanceHandler) GetFinanceStats(c echo.Context) error {
 	if stats.TeamBalances == nil {
 		stats.TeamBalances = []model.TeamBalance{}
 	}
-	if stats.MonthlyFlow == nil {
-		stats.MonthlyFlow = []model.MonthlyFlow{}
+	if stats.WeeklyFlow == nil {
+		stats.WeeklyFlow = []model.WeeklyFlow{}
 	}
 	if stats.CategoryTotals == nil {
 		stats.CategoryTotals = make(map[string]int64)

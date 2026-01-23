@@ -32,8 +32,8 @@ export default function FinanceChart({ stats }: FinanceChartProps) {
     balance: team.balance,
   }))
 
-  const monthlyFlowData = stats.monthly_flow.map((flow) => ({
-    month: flow.month,
+  const weeklyFlowData = stats.weekly_flow.map((flow) => ({
+    week: flow.week,
     income: flow.income,
     expense: flow.expense,
   }))
@@ -86,10 +86,10 @@ export default function FinanceChart({ stats }: FinanceChartProps) {
         )}
       </div>
 
-      {/* Monthly Flow Line Chart */}
+      {/* Weekly Flow Line Chart */}
       <div className="bg-carbon-dark border border-steel rounded-xl p-5">
-        <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">월별 자금 흐름</h3>
-        {monthlyFlowData.length === 0 ? (
+        <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">주별 자금 흐름</h3>
+        {weeklyFlowData.length === 0 ? (
           <div className="h-64 flex items-center justify-center">
             <p className="text-text-secondary">데이터가 없습니다</p>
           </div>
@@ -97,12 +97,12 @@ export default function FinanceChart({ stats }: FinanceChartProps) {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={monthlyFlowData}
+                data={weeklyFlowData}
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
-                  dataKey="month"
+                  dataKey="week"
                   tick={{ fill: '#9CA3AF', fontSize: 12 }}
                   axisLine={{ stroke: '#374151' }}
                 />

@@ -260,32 +260,32 @@ func (r *TransactionRepository) GetFinanceStats(ctx context.Context, leagueID uu
 		stats.CategoryTotals[category] = total
 	}
 
-	// Get monthly flow (last 12 months)
-	monthlyQuery := `
+	// Get weekly flow (last 12 weeks)
+	weeklyQuery := `
 		SELECT
-			TO_CHAR(t.created_at, 'YYYY-MM') as month,
+			TO_CHAR(t.created_at, 'IYYY-IW') as week,
 			COALESCE(SUM(CASE WHEN fa.owner_type = 'system' THEN t.amount ELSE 0 END), 0) as income,
 			COALESCE(SUM(CASE WHEN ta.owner_type = 'system' THEN t.amount ELSE 0 END), 0) as expense
 		FROM transactions t
 		JOIN accounts fa ON t.from_account_id = fa.id
 		JOIN accounts ta ON t.to_account_id = ta.id
 		WHERE t.league_id = $1
-		  AND t.created_at >= NOW() - INTERVAL '12 months'
-		GROUP BY TO_CHAR(t.created_at, 'YYYY-MM')
-		ORDER BY month
+		  AND t.created_at >= NOW() - INTERVAL '12 weeks'
+		GROUP BY TO_CHAR(t.created_at, 'IYYY-IW')
+		ORDER BY week
 	`
-	monthRows, err := r.db.Pool.QueryContext(ctx, monthlyQuery, leagueID)
+	weekRows, err := r.db.Pool.QueryContext(ctx, weeklyQuery, leagueID)
 	if err != nil {
 		return nil, err
 	}
-	defer monthRows.Close()
+	defer weekRows.Close()
 
-	for monthRows.Next() {
-		var mf model.MonthlyFlow
-		if err := monthRows.Scan(&mf.Month, &mf.Income, &mf.Expense); err != nil {
+	for weekRows.Next() {
+		var wf model.WeeklyFlow
+		if err := weekRows.Scan(&wf.Week, &wf.Income, &wf.Expense); err != nil {
 			return nil, err
 		}
-		stats.MonthlyFlow = append(stats.MonthlyFlow, mf)
+		stats.WeeklyFlow = append(stats.WeeklyFlow, wf)
 	}
 
 	return stats, nil
