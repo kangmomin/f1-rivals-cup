@@ -111,7 +111,12 @@ export const financeService = {
     page?: number
     limit?: number
   }) => {
-    const response = await api.get<{ transactions: Transaction[], total: number, balance: number }>(
+    const response = await api.get<{
+      transactions: Transaction[]
+      total: number
+      balance: number
+      weekly_flow: WeeklyFlow[]
+    }>(
       `/accounts/${accountId}/transactions`, { params }
     )
     return response.data

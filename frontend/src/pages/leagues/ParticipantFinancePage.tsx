@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { financeService, Account, Transaction, FinanceStats } from '../../services/finance'
+import { financeService, Account, Transaction, WeeklyFlow } from '../../services/finance'
 import { useAuth } from '../../contexts/AuthContext'
 import TransactionHistory from '../../components/finance/TransactionHistory'
 import TransactionForm from '../../components/finance/TransactionForm'
@@ -13,7 +13,7 @@ export default function ParticipantFinancePage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [allAccounts, setAllAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [stats, setStats] = useState<FinanceStats | null>(null)
+  const [weeklyFlow, setWeeklyFlow] = useState<WeeklyFlow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showTransactionForm, setShowTransactionForm] = useState(false)
@@ -30,15 +30,14 @@ export default function ParticipantFinancePage() {
       setAccount(myAccount)
 
       // Fetch other finance data in parallel
-      const [accountsRes, statsRes, txRes] = await Promise.all([
+      const [accountsRes, txRes] = await Promise.all([
         financeService.listAccounts(leagueId),
-        financeService.getFinanceStats(leagueId),
         financeService.getAccountTransactions(myAccount.id),
       ])
 
       setAllAccounts(accountsRes.accounts)
       setTransactions(txRes.transactions)
-      setStats(statsRes)
+      setWeeklyFlow(txRes.weekly_flow || [])
     } catch (err: any) {
       console.error('Failed to fetch participant finance data:', err)
       if (err.response?.status === 403) {
@@ -152,10 +151,10 @@ export default function ParticipantFinancePage() {
           </div>
         </div>
 
-        {/* Finance Stats */}
-        {stats && (
+        {/* Weekly Flow Chart - 해당 참가자의 주별 수입/지출 */}
+        {weeklyFlow.length > 0 && (
           <div className="mb-8">
-            <FinanceChart stats={stats} />
+            <FinanceChart accountWeeklyFlow={weeklyFlow} showTeamBalances={false} />
           </div>
         )}
 

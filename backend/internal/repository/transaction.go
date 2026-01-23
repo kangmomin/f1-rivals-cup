@@ -204,6 +204,38 @@ func (r *TransactionRepository) ListByAccount(ctx context.Context, accountID uui
 	return transactions, nil
 }
 
+// GetAccountWeeklyFlow retrieves weekly income/expense flow for a specific account (last 12 weeks)
+func (r *TransactionRepository) GetAccountWeeklyFlow(ctx context.Context, accountID uuid.UUID) ([]model.WeeklyFlow, error) {
+	query := `
+		SELECT
+			TO_CHAR(t.created_at, 'IYYY-IW') as week,
+			COALESCE(SUM(CASE WHEN t.to_account_id = $1 THEN t.amount ELSE 0 END), 0) as income,
+			COALESCE(SUM(CASE WHEN t.from_account_id = $1 THEN t.amount ELSE 0 END), 0) as expense
+		FROM transactions t
+		WHERE (t.from_account_id = $1 OR t.to_account_id = $1)
+		  AND t.created_at >= NOW() - INTERVAL '12 weeks'
+		GROUP BY TO_CHAR(t.created_at, 'IYYY-IW')
+		ORDER BY week
+	`
+
+	rows, err := r.db.Pool.QueryContext(ctx, query, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var weeklyFlow []model.WeeklyFlow
+	for rows.Next() {
+		var wf model.WeeklyFlow
+		if err := rows.Scan(&wf.Week, &wf.Income, &wf.Expense); err != nil {
+			return nil, err
+		}
+		weeklyFlow = append(weeklyFlow, wf)
+	}
+
+	return weeklyFlow, nil
+}
+
 // GetFinanceStats retrieves finance statistics for a league
 func (r *TransactionRepository) GetFinanceStats(ctx context.Context, leagueID uuid.UUID) (*model.FinanceStatsResponse, error) {
 	stats := &model.FinanceStatsResponse{
