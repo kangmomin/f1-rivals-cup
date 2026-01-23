@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { leagueService, League } from '../../services/league'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
 import { teamService, Team, CreateTeamRequest, OFFICIAL_F1_TEAMS } from '../../services/team'
-import { matchService, Match } from '../../services/match'
+import { matchService, Match, CreateMatchRequest } from '../../services/match'
 import { financeService, Account, Transaction, FinanceStats } from '../../services/finance'
 import MatchResultsEditor from '../../components/match/MatchResultsEditor'
 import TransactionForm from '../../components/finance/TransactionForm'
@@ -86,6 +86,20 @@ export default function LeagueDetailPage() {
   const [isLoadingMatches, setIsLoadingMatches] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [showResultsEditor, setShowResultsEditor] = useState(false)
+  const [showMatchModal, setShowMatchModal] = useState(false)
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null)
+  const [matchForm, setMatchForm] = useState<CreateMatchRequest>({
+    round: 1,
+    track: '',
+    match_date: '',
+    match_time: '',
+    has_sprint: false,
+    sprint_date: '',
+    sprint_time: '',
+    description: '',
+  })
+  const [isSubmittingMatch, setIsSubmittingMatch] = useState(false)
+  const [deletingMatchId, setDeletingMatchId] = useState<string | null>(null)
 
   // Finance states
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -370,6 +384,119 @@ export default function LeagueDetailPage() {
     }
   }
 
+  // Match CRUD handlers
+  const openCreateMatchModal = () => {
+    setEditingMatch(null)
+    const nextRound = matches.length > 0 ? Math.max(...matches.map(m => m.round)) + 1 : 1
+    setMatchForm({
+      round: nextRound,
+      track: '',
+      match_date: '',
+      match_time: '',
+      has_sprint: false,
+      sprint_date: '',
+      sprint_time: '',
+      description: '',
+    })
+    setShowMatchModal(true)
+  }
+
+  const openEditMatchModal = (match: Match) => {
+    setEditingMatch(match)
+    // Normalize date/time values to ensure input compatibility
+    const normalizeDate = (dateStr?: string) => dateStr?.split('T')[0] || ''
+    const normalizeTime = (timeStr?: string) => timeStr?.substring(0, 5) || ''
+    setMatchForm({
+      round: match.round,
+      track: match.track,
+      match_date: normalizeDate(match.match_date),
+      match_time: normalizeTime(match.match_time),
+      has_sprint: match.has_sprint,
+      sprint_date: normalizeDate(match.sprint_date),
+      sprint_time: normalizeTime(match.sprint_time),
+      description: match.description || '',
+    })
+    setShowMatchModal(true)
+  }
+
+  const closeMatchModal = () => {
+    setShowMatchModal(false)
+    setEditingMatch(null)
+    setMatchForm({
+      round: 1,
+      track: '',
+      match_date: '',
+      match_time: '',
+      has_sprint: false,
+      sprint_date: '',
+      sprint_time: '',
+      description: '',
+    })
+  }
+
+  const handleMatchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!id) return
+
+    if (!matchForm.track || !matchForm.match_date) {
+      alert('서킷과 경기일은 필수 입력 항목입니다')
+      return
+    }
+
+    setIsSubmittingMatch(true)
+    try {
+      const requestData: CreateMatchRequest = {
+        round: matchForm.round,
+        track: matchForm.track,
+        match_date: matchForm.match_date,
+        match_time: matchForm.match_time || undefined,
+        has_sprint: matchForm.has_sprint,
+        sprint_date: matchForm.has_sprint && matchForm.sprint_date ? matchForm.sprint_date : undefined,
+        sprint_time: matchForm.has_sprint && matchForm.sprint_time ? matchForm.sprint_time : undefined,
+        description: matchForm.description || undefined,
+      }
+
+      if (editingMatch) {
+        await matchService.update(editingMatch.id, requestData)
+      } else {
+        await matchService.create(id, requestData)
+      }
+
+      // Save succeeded, close modal first
+      closeMatchModal()
+
+      // Refresh list (non-fatal if fails)
+      try {
+        const refreshed = await matchService.listByLeague(id)
+        setMatches(refreshed.matches || [])
+      } catch (refreshErr) {
+        console.error('Failed to refresh matches:', refreshErr)
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } }
+      alert(error.response?.data?.message || '경기 저장에 실패했습니다')
+    } finally {
+      setIsSubmittingMatch(false)
+    }
+  }
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!confirm('정말 이 경기를 삭제하시겠습니까?')) return
+    if (!id) return
+
+    setDeletingMatchId(matchId)
+    try {
+      await matchService.delete(matchId)
+      const refreshed = await matchService.listByLeague(id)
+      setMatches(refreshed.matches || [])
+    } catch (err) {
+      console.error('Failed to delete match:', err)
+      alert('경기 삭제에 실패했습니다')
+    } finally {
+      setDeletingMatchId(null)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -580,6 +707,12 @@ export default function LeagueDetailPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-text-secondary">총 {matches.length}개 경기</span>
+              <button
+                onClick={openCreateMatchModal}
+                className="btn-primary text-sm whitespace-nowrap"
+              >
+                경기 추가
+              </button>
             </div>
 
             {isLoadingMatches ? (
@@ -587,6 +720,12 @@ export default function LeagueDetailPage() {
             ) : matches.length === 0 ? (
               <div className="bg-carbon-dark border border-steel rounded-lg p-8 text-center">
                 <p className="text-text-secondary">등록된 경기가 없습니다</p>
+                <button
+                  onClick={openCreateMatchModal}
+                  className="mt-2 text-neon hover:text-neon-light text-sm"
+                >
+                  첫 번째 경기 추가하기
+                </button>
               </div>
             ) : (
               <div className="bg-carbon-dark border border-steel rounded-lg overflow-x-auto">
@@ -632,12 +771,27 @@ export default function LeagueDetailPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleOpenResultsEditor(match)}
-                            className="px-3 py-1 bg-neon/10 text-neon hover:bg-neon/20 rounded text-xs font-medium transition-colors whitespace-nowrap"
-                          >
-                            결과 입력
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleOpenResultsEditor(match)}
+                              className="px-3 py-1 bg-neon/10 text-neon hover:bg-neon/20 rounded text-xs font-medium transition-colors whitespace-nowrap"
+                            >
+                              결과 입력
+                            </button>
+                            <button
+                              onClick={() => openEditMatchModal(match)}
+                              className="px-2 py-1 text-text-secondary hover:text-neon text-xs transition-colors whitespace-nowrap"
+                            >
+                              수정
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMatch(match.id)}
+                              disabled={deletingMatchId === match.id}
+                              className="px-2 py-1 text-text-secondary hover:text-loss text-xs transition-colors disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {deletingMatchId === match.id ? '삭제중...' : '삭제'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1056,6 +1210,138 @@ export default function LeagueDetailPage() {
                   className="btn-primary text-sm disabled:opacity-50 whitespace-nowrap"
                 >
                   {isSubmittingTeam ? '저장 중...' : editingTeam ? '수정' : '추가'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Match Modal */}
+      {showMatchModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-carbon-dark border border-steel rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-medium text-white mb-4">
+              {editingMatch ? '경기 수정' : '경기 추가'}
+            </h3>
+            <form onSubmit={handleMatchSubmit} className="space-y-4">
+              {/* Round */}
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">
+                  라운드 <span className="text-loss">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={matchForm.round}
+                  onChange={(e) => setMatchForm({ ...matchForm, round: parseInt(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white focus:outline-none focus:border-neon"
+                />
+              </div>
+
+              {/* Track */}
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">
+                  서킷 (트랙) <span className="text-loss">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={matchForm.track}
+                  onChange={(e) => setMatchForm({ ...matchForm, track: e.target.value })}
+                  placeholder="예: Bahrain International Circuit"
+                  className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white placeholder-text-secondary focus:outline-none focus:border-neon"
+                />
+              </div>
+
+              {/* Match Date */}
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">
+                  경기일 <span className="text-loss">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={matchForm.match_date}
+                  onChange={(e) => setMatchForm({ ...matchForm, match_date: e.target.value })}
+                  className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white focus:outline-none focus:border-neon"
+                />
+              </div>
+
+              {/* Match Time */}
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">경기 시간</label>
+                <input
+                  type="time"
+                  value={matchForm.match_time}
+                  onChange={(e) => setMatchForm({ ...matchForm, match_time: e.target.value })}
+                  className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white focus:outline-none focus:border-neon"
+                />
+              </div>
+
+              {/* Has Sprint */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="has_sprint"
+                  checked={matchForm.has_sprint}
+                  onChange={(e) => setMatchForm({ ...matchForm, has_sprint: e.target.checked })}
+                  className="w-4 h-4 rounded border-steel bg-carbon text-racing focus:ring-racing"
+                />
+                <label htmlFor="has_sprint" className="text-sm text-white">
+                  스프린트 레이스 포함
+                </label>
+              </div>
+
+              {/* Sprint Fields (shown when has_sprint is true) */}
+              {matchForm.has_sprint && (
+                <div className="pl-6 border-l-2 border-racing/30 space-y-4">
+                  <div>
+                    <label className="block text-sm text-text-secondary mb-1">스프린트 일자</label>
+                    <input
+                      type="date"
+                      value={matchForm.sprint_date}
+                      onChange={(e) => setMatchForm({ ...matchForm, sprint_date: e.target.value })}
+                      className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white focus:outline-none focus:border-neon"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-text-secondary mb-1">스프린트 시간</label>
+                    <input
+                      type="time"
+                      value={matchForm.sprint_time}
+                      onChange={(e) => setMatchForm({ ...matchForm, sprint_time: e.target.value })}
+                      className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white focus:outline-none focus:border-neon"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">설명</label>
+                <textarea
+                  value={matchForm.description}
+                  onChange={(e) => setMatchForm({ ...matchForm, description: e.target.value })}
+                  placeholder="경기에 대한 추가 설명 (선택사항)"
+                  rows={3}
+                  className="w-full px-3 py-2 bg-carbon border border-steel rounded-lg text-white placeholder-text-secondary focus:outline-none focus:border-neon resize-none"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeMatchModal}
+                  className="px-4 py-2 text-text-secondary hover:text-white transition-colors text-sm whitespace-nowrap"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingMatch}
+                  className="btn-primary text-sm disabled:opacity-50 whitespace-nowrap"
+                >
+                  {isSubmittingMatch ? '저장 중...' : editingMatch ? '수정' : '추가'}
                 </button>
               </div>
             </form>
