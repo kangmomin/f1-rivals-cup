@@ -61,8 +61,8 @@ type TeamBalance struct {
 	Balance  int64     `json:"balance"`
 }
 
-type MonthlyFlow struct {
-	Month   string `json:"month"`
+type WeeklyFlow struct {
+	Week    string `json:"week"` // 'IYYY-IW' 형식 (ISO week)
 	Income  int64  `json:"income"`
 	Expense int64  `json:"expense"`
 }
@@ -71,5 +71,5 @@ type FinanceStatsResponse struct {
 	TotalCirculation int64            `json:"total_circulation"`
 	TeamBalances     []TeamBalance    `json:"team_balances"`
 	CategoryTotals   map[string]int64 `json:"category_totals"`
-	MonthlyFlow      []MonthlyFlow    `json:"monthly_flow"`
+	WeeklyFlow       []WeeklyFlow     `json:"weekly_flow"`
 }
