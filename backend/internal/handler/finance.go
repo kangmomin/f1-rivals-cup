@@ -422,10 +422,25 @@ func (h *FinanceHandler) ListAccountTransactions(c echo.Context) error {
 		transactions = []*model.Transaction{}
 	}
 
+	// Get weekly flow for this account
+	weeklyFlow, err := h.transactionRepo.GetAccountWeeklyFlow(ctx, id)
+	if err != nil {
+		slog.Error("Finance.ListAccountTransactions: failed to get weekly flow", "error", err, "account_id", id)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "주별 통계를 불러오는데 실패했습니다",
+		})
+	}
+
+	if weeklyFlow == nil {
+		weeklyFlow = []model.WeeklyFlow{}
+	}
+
 	return c.JSON(http.StatusOK, model.AccountTransactionsResponse{
 		Transactions: transactions,
 		Total:        len(transactions),
 		Balance:      account.Balance,
+		WeeklyFlow:   weeklyFlow,
 	})
 }
 

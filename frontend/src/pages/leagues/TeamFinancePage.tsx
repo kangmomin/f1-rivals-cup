@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { teamService, Team } from '../../services/team'
-import { financeService, Account, Transaction, FinanceStats } from '../../services/finance'
+import { financeService, Account, Transaction, WeeklyFlow } from '../../services/finance'
 import { participantService } from '../../services/participant'
 import { useAuth } from '../../contexts/AuthContext'
 import TransactionHistory from '../../components/finance/TransactionHistory'
@@ -17,7 +17,7 @@ export default function TeamFinancePage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [allAccounts, setAllAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [stats, setStats] = useState<FinanceStats | null>(null)
+  const [weeklyFlow, setWeeklyFlow] = useState<WeeklyFlow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDirector, setIsDirector] = useState(false)
@@ -39,11 +39,7 @@ export default function TeamFinancePage() {
       setTeam(foundTeam)
 
       // Fetch finance data
-      const [accountsRes, statsRes] = await Promise.all([
-        financeService.listAccounts(leagueId),
-        financeService.getFinanceStats(leagueId),
-      ])
-
+      const accountsRes = await financeService.listAccounts(leagueId)
       setAllAccounts(accountsRes.accounts)
 
       const teamAccount = accountsRes.accounts.find(
@@ -51,11 +47,11 @@ export default function TeamFinancePage() {
       )
       if (teamAccount) {
         setAccount(teamAccount)
-        // Fetch account transactions
+        // Fetch account transactions with weekly flow
         const txRes = await financeService.getAccountTransactions(teamAccount.id)
         setTransactions(txRes.transactions)
+        setWeeklyFlow(txRes.weekly_flow || [])
       }
-      setStats(statsRes)
 
       // Check if user is director of this team
       if (isAuthenticated) {
@@ -162,10 +158,10 @@ export default function TeamFinancePage() {
           </div>
         </div>
 
-        {/* Finance Stats */}
-        {stats && (
+        {/* Weekly Flow Chart - 해당 팀의 주별 수입/지출 */}
+        {weeklyFlow.length > 0 && (
           <div className="mb-8">
-            <FinanceChart stats={stats} />
+            <FinanceChart accountWeeklyFlow={weeklyFlow} showTeamBalances={false} />
           </div>
         )}
 

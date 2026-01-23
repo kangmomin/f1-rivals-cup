@@ -52,6 +52,7 @@ type AccountTransactionsResponse struct {
 	Transactions []*Transaction `json:"transactions"`
 	Total        int            `json:"total"`
 	Balance      int64          `json:"balance"`
+	WeeklyFlow   []WeeklyFlow   `json:"weekly_flow"`
 }
 
 // Finance stats for graphs
