@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { leagueService, League } from '../../services/league'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
@@ -298,6 +298,17 @@ export default function LeagueDetailPage() {
     return new Date(dateStr).toLocaleDateString('ko-KR')
   }
 
+  const formatMatchDateTime = (date?: string, time?: string) => {
+    if (!date) return '-'
+    const d = new Date(date)
+    const dateStr = d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
+    if (time) {
+      const timeStr = time.substring(0, 5) // HH:mm
+      return `${dateStr} ${timeStr}`
+    }
+    return dateStr
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-carbon flex items-center justify-center">
@@ -533,43 +544,79 @@ export default function LeagueDetailPage() {
               ) : (
                 <div className="grid grid-cols-1 divide-y divide-steel">
                   {matches.map((match) => (
-                    <Link
-                      key={match.id}
-                      to={`/matches/${match.id}`}
-                      className={`p-5 flex items-center justify-between hover:bg-steel/10 transition-colors ${
-                        match.status === 'in_progress' ? 'bg-racing/5' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 rounded-xl bg-carbon-light flex items-center justify-center">
-                          <span className="text-lg font-bold text-white">R{match.round}</span>
+                    <Fragment key={match.id}>
+                      {/* Sprint Row (only when has_sprint is true) */}
+                      {match.has_sprint && (
+                        <Link
+                          to={`/matches/${match.id}`}
+                          className={`p-5 flex items-center justify-between hover:bg-steel/10 transition-colors ${
+                            match.status === 'in_progress' ? 'bg-racing/5' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-xl bg-racing/20 flex items-center justify-center">
+                              <span className="text-lg font-bold text-racing">SR</span>
+                            </div>
+                            <div>
+                              <h4 className="text-white font-medium">{match.track}</h4>
+                              <p className="text-sm text-text-secondary">
+                                {formatMatchDateTime(match.sprint_date, match.sprint_time)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                              match.status === 'completed' ? 'bg-profit/10 text-profit border border-profit/30' :
+                              match.status === 'in_progress' ? 'bg-racing/10 text-racing border border-racing/30' :
+                              match.status === 'cancelled' ? 'bg-loss/10 text-loss border border-loss/30' :
+                              'bg-steel text-text-secondary'
+                            }`}>
+                              {match.status === 'completed' ? '완료' :
+                               match.status === 'in_progress' ? '진행중' :
+                               match.status === 'cancelled' ? '취소됨' : '예정'}
+                            </span>
+                            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </Link>
+                      )}
+
+                      {/* Main Race Row */}
+                      <Link
+                        to={`/matches/${match.id}`}
+                        className={`p-5 flex items-center justify-between hover:bg-steel/10 transition-colors ${
+                          match.status === 'in_progress' ? 'bg-racing/5' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-6">
+                          <div className="w-14 h-14 rounded-xl bg-carbon-light flex items-center justify-center">
+                            <span className="text-lg font-bold text-white">R{match.round}</span>
+                          </div>
+                          <div>
+                            <h4 className="text-white font-medium">{match.track}</h4>
+                            <p className="text-sm text-text-secondary">
+                              {formatMatchDateTime(match.match_date, match.match_time)}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-white font-medium">{match.track}</h4>
-                          <p className="text-sm text-text-secondary">
-                            {match.match_date}{match.match_time && ` · ${match.match_time}`}
-                            {match.has_sprint && (
-                              <span className="ml-2 text-racing">(Sprint)</span>
-                            )}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                            match.status === 'completed' ? 'bg-profit/10 text-profit border border-profit/30' :
+                            match.status === 'in_progress' ? 'bg-racing/10 text-racing border border-racing/30' :
+                            match.status === 'cancelled' ? 'bg-loss/10 text-loss border border-loss/30' :
+                            'bg-steel text-text-secondary'
+                          }`}>
+                            {match.status === 'completed' ? '완료' :
+                             match.status === 'in_progress' ? '진행중' :
+                             match.status === 'cancelled' ? '취소됨' : '예정'}
+                          </span>
+                          <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                          match.status === 'completed' ? 'bg-profit/10 text-profit border border-profit/30' :
-                          match.status === 'in_progress' ? 'bg-racing/10 text-racing border border-racing/30' :
-                          match.status === 'cancelled' ? 'bg-loss/10 text-loss border border-loss/30' :
-                          'bg-steel text-text-secondary'
-                        }`}>
-                          {match.status === 'completed' ? '완료' :
-                           match.status === 'in_progress' ? '진행중' :
-                           match.status === 'cancelled' ? '취소됨' : '예정'}
-                        </span>
-                        <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </Link>
+                      </Link>
+                    </Fragment>
                   ))}
                 </div>
               )}
