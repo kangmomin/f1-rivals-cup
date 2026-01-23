@@ -143,6 +143,151 @@ func (h *MatchResultHandler) BulkUpdate(c echo.Context) error {
 	})
 }
 
+// UpdateSprintResults handles PUT /api/v1/admin/matches/:id/results/sprint
+func (h *MatchResultHandler) UpdateSprintResults(c echo.Context) error {
+	matchIDStr := c.Param("id")
+	matchID, err := uuid.Parse(matchIDStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 경기 ID입니다",
+		})
+	}
+
+	var req model.BulkUpdateResultsRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 요청입니다",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	// Check if match exists and has sprint
+	match, err := h.matchRepo.GetByID(ctx, matchID)
+	if err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			return c.JSON(http.StatusNotFound, model.ErrorResponse{
+				Error:   "not_found",
+				Message: "경기를 찾을 수 없습니다",
+			})
+		}
+		slog.Error("MatchResult.UpdateSprintResults: failed to get match", "error", err, "match_id", matchID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "경기 정보를 불러오는데 실패했습니다",
+		})
+	}
+
+	if !match.HasSprint {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "스프린트 레이스가 없는 경기입니다",
+		})
+	}
+
+	// Bulk upsert sprint results only (preserves existing race results)
+	if err := h.resultRepo.BulkUpsertSprintResults(ctx, matchID, req.Results); err != nil {
+		slog.Error("MatchResult.UpdateSprintResults: failed to bulk upsert results", "error", err, "match_id", matchID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "스프린트 결과 저장에 실패했습니다",
+		})
+	}
+
+	// Update sprint_status to completed
+	if match.SprintStatus != model.MatchStatusCompleted {
+		if err := h.matchRepo.UpdateSprintStatus(ctx, matchID, model.MatchStatusCompleted); err != nil {
+			slog.Error("MatchResult.UpdateSprintResults: failed to update sprint status", "error", err, "match_id", matchID)
+		}
+	}
+
+	// Return updated results
+	results, err := h.resultRepo.ListByMatch(ctx, matchID)
+	if err != nil {
+		slog.Error("MatchResult.UpdateSprintResults: failed to list results", "error", err, "match_id", matchID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "스프린트 결과를 불러오는데 실패했습니다",
+		})
+	}
+
+	return c.JSON(http.StatusOK, model.ListMatchResultsResponse{
+		Results: results,
+		Total:   len(results),
+	})
+}
+
+// UpdateRaceResults handles PUT /api/v1/admin/matches/:id/results/race
+func (h *MatchResultHandler) UpdateRaceResults(c echo.Context) error {
+	matchIDStr := c.Param("id")
+	matchID, err := uuid.Parse(matchIDStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 경기 ID입니다",
+		})
+	}
+
+	var req model.BulkUpdateResultsRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 요청입니다",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	// Check if match exists
+	match, err := h.matchRepo.GetByID(ctx, matchID)
+	if err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			return c.JSON(http.StatusNotFound, model.ErrorResponse{
+				Error:   "not_found",
+				Message: "경기를 찾을 수 없습니다",
+			})
+		}
+		slog.Error("MatchResult.UpdateRaceResults: failed to get match", "error", err, "match_id", matchID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "경기 정보를 불러오는데 실패했습니다",
+		})
+	}
+
+	// Bulk upsert race results only (preserves existing sprint results)
+	if err := h.resultRepo.BulkUpsertRaceResults(ctx, matchID, req.Results); err != nil {
+		slog.Error("MatchResult.UpdateRaceResults: failed to bulk upsert results", "error", err, "match_id", matchID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "본 레이스 결과 저장에 실패했습니다",
+		})
+	}
+
+	// Update status to completed
+	if match.Status != model.MatchStatusCompleted {
+		if err := h.matchRepo.UpdateStatus(ctx, matchID, model.MatchStatusCompleted); err != nil {
+			slog.Error("MatchResult.UpdateRaceResults: failed to update status", "error", err, "match_id", matchID)
+		}
+	}
+
+	// Return updated results
+	results, err := h.resultRepo.ListByMatch(ctx, matchID)
+	if err != nil {
+		slog.Error("MatchResult.UpdateRaceResults: failed to list results", "error", err, "match_id", matchID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "본 레이스 결과를 불러오는데 실패했습니다",
+		})
+	}
+
+	return c.JSON(http.StatusOK, model.ListMatchResultsResponse{
+		Results: results,
+		Total:   len(results),
+	})
+}
+
 // Delete handles DELETE /api/v1/admin/matches/:id/results
 func (h *MatchResultHandler) Delete(c echo.Context) error {
 	matchIDStr := c.Param("id")

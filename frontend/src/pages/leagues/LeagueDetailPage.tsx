@@ -550,7 +550,8 @@ export default function LeagueDetailPage() {
                         <Link
                           to={`/matches/${match.id}`}
                           className={`p-5 flex items-center justify-between hover:bg-steel/10 transition-colors ${
-                            match.status === 'in_progress' ? 'bg-racing/5' : ''
+                            match.sprint_status === 'completed' ? 'bg-profit/5' :
+                            match.sprint_status === 'in_progress' ? 'bg-racing/5' : ''
                           }`}
                         >
                           <div className="flex items-center gap-6">
@@ -566,14 +567,14 @@ export default function LeagueDetailPage() {
                           </div>
                           <div className="flex items-center gap-3">
                             <span className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                              match.status === 'completed' ? 'bg-profit/10 text-profit border border-profit/30' :
-                              match.status === 'in_progress' ? 'bg-racing/10 text-racing border border-racing/30' :
-                              match.status === 'cancelled' ? 'bg-loss/10 text-loss border border-loss/30' :
+                              match.sprint_status === 'completed' ? 'bg-profit/10 text-profit border border-profit/30' :
+                              match.sprint_status === 'in_progress' ? 'bg-racing/10 text-racing border border-racing/30' :
+                              match.sprint_status === 'cancelled' ? 'bg-loss/10 text-loss border border-loss/30' :
                               'bg-steel text-text-secondary'
                             }`}>
-                              {match.status === 'completed' ? '완료' :
-                               match.status === 'in_progress' ? '진행중' :
-                               match.status === 'cancelled' ? '취소됨' : '예정'}
+                              {match.sprint_status === 'completed' ? '완료' :
+                               match.sprint_status === 'in_progress' ? '진행중' :
+                               match.sprint_status === 'cancelled' ? '취소됨' : '예정'}
                             </span>
                             <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -586,6 +587,7 @@ export default function LeagueDetailPage() {
                       <Link
                         to={`/matches/${match.id}`}
                         className={`p-5 flex items-center justify-between hover:bg-steel/10 transition-colors ${
+                          match.status === 'completed' ? 'bg-profit/5' :
                           match.status === 'in_progress' ? 'bg-racing/5' : ''
                         }`}
                       >
