@@ -159,11 +159,9 @@ export default function TeamFinancePage() {
         </div>
 
         {/* Weekly Flow Chart - 해당 팀의 주별 수입/지출 */}
-        {weeklyFlow.length > 0 && (
-          <div className="mb-8">
-            <FinanceChart accountWeeklyFlow={weeklyFlow} showTeamBalances={false} />
-          </div>
-        )}
+        <div className="mb-8">
+          <FinanceChart accountWeeklyFlow={weeklyFlow} showTeamBalances={false} />
+        </div>
 
         {/* Transaction History */}
         <div className="bg-carbon-dark border border-steel rounded-xl p-5">

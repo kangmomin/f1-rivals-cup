@@ -482,6 +482,16 @@ func (h *FinanceHandler) GetFinanceStats(c echo.Context) error {
 		})
 	}
 
+	// Get team weekly flows
+	teamWeeklyFlows, err := h.transactionRepo.GetTeamWeeklyFlows(ctx, leagueID)
+	if err != nil {
+		slog.Error("Finance.GetFinanceStats: failed to get team weekly flows", "error", err, "league_id", leagueID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "팀별 주별 통계를 불러오는데 실패했습니다",
+		})
+	}
+
 	// Ensure non-nil slices
 	if stats.TeamBalances == nil {
 		stats.TeamBalances = []model.TeamBalance{}
@@ -492,6 +502,10 @@ func (h *FinanceHandler) GetFinanceStats(c echo.Context) error {
 	if stats.CategoryTotals == nil {
 		stats.CategoryTotals = make(map[string]int64)
 	}
+	if teamWeeklyFlows == nil {
+		teamWeeklyFlows = []model.TeamWeeklyFlow{}
+	}
+	stats.TeamWeeklyFlows = teamWeeklyFlows
 
 	return c.JSON(http.StatusOK, stats)
 }

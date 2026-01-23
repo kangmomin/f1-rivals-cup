@@ -48,11 +48,19 @@ export interface WeeklyFlow {
   expense: number
 }
 
+export interface TeamWeeklyFlow {
+  team_id: string
+  team_name: string
+  team_color: string
+  flows: WeeklyFlow[]
+}
+
 export interface FinanceStats {
   total_circulation: number
   team_balances: TeamBalance[]
   category_totals: Record<string, number>
   weekly_flow: WeeklyFlow[]
+  team_weekly_flows: TeamWeeklyFlow[]
 }
 
 export const financeService = {
