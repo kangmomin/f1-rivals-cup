@@ -1,25 +1,68 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { standingsService, LeagueStandingsResponse } from '../../services/standings'
-import { StandingsChart } from '../../components/standings'
+import { matchService, Match, MatchResult } from '../../services/match'
+import { StandingsChart, RacePointsData } from '../../components/standings'
 
 type TabType = 'drivers' | 'teams'
+
+// 드라이버/팀별 고유 색상 생성
+const CHART_COLORS = [
+  '#0A84FF', // neon blue
+  '#EAB308', // gold
+  '#22C55E', // green
+  '#EF4444', // red
+  '#A855F7', // purple
+  '#F97316', // orange
+  '#06B6D4', // cyan
+  '#EC4899', // pink
+  '#84CC16', // lime
+  '#6366F1', // indigo
+]
 
 export default function StandingsPage() {
   const { id } = useParams<{ id: string }>()
   const [data, setData] = useState<LeagueStandingsResponse | null>(null)
+  const [matches, setMatches] = useState<Match[]>([])
+  const [matchResults, setMatchResults] = useState<Map<string, MatchResult[]>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('drivers')
   const [showChart, setShowChart] = useState(true)
 
   useEffect(() => {
-    const fetchStandings = async () => {
+    const fetchData = async () => {
       if (!id) return
       setIsLoading(true)
       try {
-        const result = await standingsService.getByLeague(id)
-        setData(result)
+        // 순위 데이터와 경기 목록을 병렬로 가져옴
+        const [standingsResult, matchesResult] = await Promise.all([
+          standingsService.getByLeague(id),
+          matchService.listByLeague(id),
+        ])
+        setData(standingsResult)
+
+        // 완료된 경기만 필터링하고 날짜순 정렬
+        const completedMatches = matchesResult.matches
+          .filter(m => m.status === 'completed')
+          .sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+        setMatches(completedMatches)
+
+        // 완료된 경기들의 결과를 병렬로 가져옴
+        if (completedMatches.length > 0) {
+          const resultsPromises = completedMatches.map(match =>
+            matchService.getResults(match.id).then(res => ({
+              matchId: match.id,
+              results: res.results,
+            }))
+          )
+          const allResults = await Promise.all(resultsPromises)
+          const resultsMap = new Map<string, MatchResult[]>()
+          allResults.forEach(({ matchId, results }) => {
+            resultsMap.set(matchId, results)
+          })
+          setMatchResults(resultsMap)
+        }
       } catch (err) {
         setError('순위표를 불러오는데 실패했습니다')
         console.error(err)
@@ -27,8 +70,81 @@ export default function StandingsPage() {
         setIsLoading(false)
       }
     }
-    fetchStandings()
+    fetchData()
   }, [id])
+
+  // 드라이버별 경기별 누적 포인트 데이터 생성
+  const buildDriverRaceData = (): { raceData: RacePointsData[]; drivers: { name: string; color: string }[] } => {
+    if (!data || matches.length === 0) return { raceData: [], drivers: [] }
+
+    // 상위 10명 드라이버만 선택
+    const topDrivers = data.standings.slice(0, 10)
+    const drivers = topDrivers.map((d, i) => ({
+      name: d.driver_name,
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    }))
+
+    // 드라이버별 누적 포인트 추적
+    const cumulativePoints: Record<string, number> = {}
+    topDrivers.forEach(d => { cumulativePoints[d.driver_name] = 0 })
+
+    const raceData: RacePointsData[] = matches.map(match => {
+      const results = matchResults.get(match.id) || []
+      const dataPoint: RacePointsData = { race: `R${match.round}` }
+
+      topDrivers.forEach(driver => {
+        const result = results.find(r => r.participant_name === driver.driver_name)
+        if (result) {
+          cumulativePoints[driver.driver_name] += result.points + result.sprint_points
+        }
+        dataPoint[driver.driver_name] = cumulativePoints[driver.driver_name]
+      })
+
+      return dataPoint
+    })
+
+    return { raceData, drivers }
+  }
+
+  // 팀별 경기별 누적 포인트 데이터 생성
+  const buildTeamRaceData = (): { raceData: RacePointsData[]; teams: { name: string; color: string }[] } => {
+    if (!data || matches.length === 0) return { raceData: [], teams: [] }
+
+    const allTeams = data.team_standings
+    const teams = allTeams.map((t, i) => ({
+      name: t.team_name,
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    }))
+
+    // 팀별 누적 포인트 추적
+    const cumulativePoints: Record<string, number> = {}
+    allTeams.forEach(t => { cumulativePoints[t.team_name] = 0 })
+
+    const raceData: RacePointsData[] = matches.map(match => {
+      const results = matchResults.get(match.id) || []
+      const dataPoint: RacePointsData = { race: `R${match.round}` }
+
+      // 팀별 포인트 집계
+      const teamPointsThisRace: Record<string, number> = {}
+      results.forEach(result => {
+        if (result.team_name) {
+          teamPointsThisRace[result.team_name] = (teamPointsThisRace[result.team_name] || 0) + result.points + result.sprint_points
+        }
+      })
+
+      allTeams.forEach(team => {
+        cumulativePoints[team.team_name] += teamPointsThisRace[team.team_name] || 0
+        dataPoint[team.team_name] = cumulativePoints[team.team_name]
+      })
+
+      return dataPoint
+    })
+
+    return { raceData, teams }
+  }
+
+  const { raceData: driverRaceData, drivers: chartDrivers } = buildDriverRaceData()
+  const { raceData: teamRaceData, teams: chartTeams } = buildTeamRaceData()
 
   const getRankStyle = (rank: number) => {
     switch (rank) {
@@ -152,8 +268,10 @@ export default function StandingsPage() {
       {showChart && (
         <StandingsChart
           type={activeTab}
-          driverStandings={data.standings}
-          teamStandings={data.team_standings}
+          driverRaceData={driverRaceData}
+          teamRaceData={teamRaceData}
+          drivers={chartDrivers}
+          teams={chartTeams}
         />
       )}
 
