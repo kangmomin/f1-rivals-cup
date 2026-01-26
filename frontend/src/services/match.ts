@@ -53,6 +53,7 @@ export interface MatchResult {
   id: string
   match_id: string
   participant_id: string
+  stored_team_name?: string  // Team at the time of result recording
   position?: number
   points: number
   fastest_lap: boolean
@@ -63,11 +64,12 @@ export interface MatchResult {
   created_at: string
   updated_at: string
   participant_name?: string
-  team_name?: string
+  team_name?: string  // Current team from league_participants
 }
 
 export interface CreateMatchResultRequest {
   participant_id: string
+  team_name?: string  // Team to record with the result
   position?: number
   points: number
   fastest_lap: boolean
