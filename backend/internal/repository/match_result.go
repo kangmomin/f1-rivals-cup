@@ -231,10 +231,11 @@ func (r *MatchResultRepository) GetLeagueStandings(ctx context.Context, leagueID
 }
 
 // GetTeamStandings returns aggregated team standings for a league
+// Uses historical team data when available, falling back to current team assignment
 func (r *MatchResultRepository) GetTeamStandings(ctx context.Context, leagueID uuid.UUID) ([]model.TeamStandingsEntry, error) {
 	query := `
 		SELECT
-			lp.team_name,
+			COALESCE(pth.team_name, lp.team_name) as team_name,
 			COALESCE(SUM(mr.points), 0) + COALESCE(SUM(mr.sprint_points), 0) as total_points,
 			COALESCE(SUM(mr.points), 0) as race_points,
 			COALESCE(SUM(mr.sprint_points), 0) as sprint_points,
@@ -243,15 +244,18 @@ func (r *MatchResultRepository) GetTeamStandings(ctx context.Context, leagueID u
 			COUNT(CASE WHEN mr.fastest_lap = true THEN 1 END) as fastest_laps,
 			COUNT(CASE WHEN mr.dnf = true THEN 1 END) as dnfs,
 			COUNT(DISTINCT lp.id) as driver_count
-		FROM league_participants lp
-		LEFT JOIN match_results mr ON lp.id = mr.participant_id
-		LEFT JOIN matches m ON mr.match_id = m.id AND m.league_id = $1
-		WHERE lp.league_id = $1
+		FROM match_results mr
+		JOIN matches m ON mr.match_id = m.id
+		JOIN league_participants lp ON mr.participant_id = lp.id
+		LEFT JOIN participant_team_history pth ON pth.participant_id = lp.id
+			AND m.match_date >= pth.effective_from
+			AND (pth.effective_until IS NULL OR m.match_date < pth.effective_until)
+		WHERE m.league_id = $1
 		  AND lp.status = 'approved'
 		  AND 'player' = ANY(lp.roles)
-		  AND lp.team_name IS NOT NULL
-		  AND lp.team_name != ''
-		GROUP BY lp.team_name
+		  AND COALESCE(pth.team_name, lp.team_name) IS NOT NULL
+		  AND COALESCE(pth.team_name, lp.team_name) != ''
+		GROUP BY COALESCE(pth.team_name, lp.team_name)
 		ORDER BY total_points DESC, wins DESC, podiums DESC, fastest_laps DESC
 	`
 
