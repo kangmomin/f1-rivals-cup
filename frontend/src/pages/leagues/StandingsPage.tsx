@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { standingsService, LeagueStandingsResponse } from '../../services/standings'
+import { StandingsChart } from '../../components/standings'
 
 type TabType = 'drivers' | 'teams'
 
@@ -10,6 +11,7 @@ export default function StandingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('drivers')
+  const [showChart, setShowChart] = useState(true)
 
   useEffect(() => {
     const fetchStandings = async () => {
@@ -91,37 +93,69 @@ export default function StandingsPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide" role="tablist" aria-label="순위 유형">
+      {/* Tabs and Chart Toggle */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide" role="tablist" aria-label="순위 유형">
+          <button
+            id="tab-drivers"
+            role="tab"
+            aria-selected={activeTab === 'drivers'}
+            aria-controls="tabpanel-drivers"
+            onClick={() => setActiveTab('drivers')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap touch-target ${
+              activeTab === 'drivers'
+                ? 'bg-neon text-black'
+                : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white'
+            }`}
+          >
+            드라이버 순위
+          </button>
+          <button
+            id="tab-teams"
+            role="tab"
+            aria-selected={activeTab === 'teams'}
+            aria-controls="tabpanel-teams"
+            onClick={() => setActiveTab('teams')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap touch-target ${
+              activeTab === 'teams'
+                ? 'bg-neon text-black'
+                : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white'
+            }`}
+          >
+            팀 순위
+          </button>
+        </div>
         <button
-          id="tab-drivers"
-          role="tab"
-          aria-selected={activeTab === 'drivers'}
-          aria-controls="tabpanel-drivers"
-          onClick={() => setActiveTab('drivers')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap touch-target ${
-            activeTab === 'drivers'
-              ? 'bg-neon text-black'
-              : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white'
-          }`}
+          onClick={() => setShowChart(!showChart)}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-carbon-dark border border-steel text-text-secondary hover:text-white transition-colors whitespace-nowrap touch-target"
+          aria-pressed={showChart}
         >
-          드라이버 순위
-        </button>
-        <button
-          id="tab-teams"
-          role="tab"
-          aria-selected={activeTab === 'teams'}
-          aria-controls="tabpanel-teams"
-          onClick={() => setActiveTab('teams')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap touch-target ${
-            activeTab === 'teams'
-              ? 'bg-neon text-black'
-              : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white'
-          }`}
-        >
-          팀 순위
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span className="hidden sm:inline">{showChart ? '차트 숨김' : '차트 표시'}</span>
         </button>
       </div>
+
+      {/* Standings Chart */}
+      {showChart && (
+        <StandingsChart
+          type={activeTab}
+          driverStandings={data.standings}
+          teamStandings={data.team_standings}
+        />
+      )}
 
       {/* Driver Standings Table */}
       {activeTab === 'drivers' && data.standings && data.standings.length > 0 ? (
