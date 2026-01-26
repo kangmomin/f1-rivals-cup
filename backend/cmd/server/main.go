@@ -207,6 +207,7 @@ func main() {
 	leagueGroup.GET("/:id/matches", matchHandler.List)
 	leagueGroup.GET("/:id/standings", matchResultHandler.Standings)
 	leagueGroup.GET("/:id/teams", teamHandler.List)
+	leagueGroup.GET("/:id/participants", participantHandler.ListApprovedByLeague)
 	leagueGroup.GET("/:id/news", newsHandler.List)
 	leagueGroup.GET("/:id/accounts", financeHandler.ListAccounts)
 	leagueGroup.GET("/:id/transactions", financeHandler.ListTransactions)
