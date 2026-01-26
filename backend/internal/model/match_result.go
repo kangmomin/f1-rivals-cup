@@ -11,6 +11,7 @@ type MatchResult struct {
 	ID             uuid.UUID `json:"id"`
 	MatchID        uuid.UUID `json:"match_id"`
 	ParticipantID  uuid.UUID `json:"participant_id"`
+	StoredTeamName *string   `json:"stored_team_name,omitempty"` // Team at the time of result recording
 	Position       *int      `json:"position,omitempty"`
 	Points         float64   `json:"points"`
 	FastestLap     bool      `json:"fastest_lap"`
@@ -23,12 +24,13 @@ type MatchResult struct {
 
 	// Joined fields for display
 	ParticipantName *string `json:"participant_name,omitempty"`
-	TeamName        *string `json:"team_name,omitempty"`
+	TeamName        *string `json:"team_name,omitempty"` // Current team from league_participants
 }
 
 // CreateMatchResultRequest represents a request to create/update a match result
 type CreateMatchResultRequest struct {
 	ParticipantID  uuid.UUID `json:"participant_id" validate:"required"`
+	TeamName       *string   `json:"team_name,omitempty"`
 	Position       *int      `json:"position,omitempty"`
 	Points         float64   `json:"points"`
 	FastestLap     bool      `json:"fastest_lap"`

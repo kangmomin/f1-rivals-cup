@@ -12,16 +12,18 @@ import (
 )
 
 type MatchResultHandler struct {
-	resultRepo *repository.MatchResultRepository
-	matchRepo  *repository.MatchRepository
-	leagueRepo *repository.LeagueRepository
+	resultRepo      *repository.MatchResultRepository
+	matchRepo       *repository.MatchRepository
+	leagueRepo      *repository.LeagueRepository
+	participantRepo *repository.ParticipantRepository
 }
 
-func NewMatchResultHandler(resultRepo *repository.MatchResultRepository, matchRepo *repository.MatchRepository, leagueRepo *repository.LeagueRepository) *MatchResultHandler {
+func NewMatchResultHandler(resultRepo *repository.MatchResultRepository, matchRepo *repository.MatchRepository, leagueRepo *repository.LeagueRepository, participantRepo *repository.ParticipantRepository) *MatchResultHandler {
 	return &MatchResultHandler{
-		resultRepo: resultRepo,
-		matchRepo:  matchRepo,
-		leagueRepo: leagueRepo,
+		resultRepo:      resultRepo,
+		matchRepo:       matchRepo,
+		leagueRepo:      leagueRepo,
+		participantRepo: participantRepo,
 	}
 }
 
@@ -110,6 +112,18 @@ func (h *MatchResultHandler) BulkUpdate(c echo.Context) error {
 		})
 	}
 
+	// Populate team_name for each result from participant's current team
+	for i := range req.Results {
+		if req.Results[i].TeamName == nil {
+			participant, err := h.participantRepo.GetByID(ctx, req.Results[i].ParticipantID)
+			if err != nil {
+				slog.Error("MatchResult.BulkUpdate: failed to get participant", "error", err, "participant_id", req.Results[i].ParticipantID)
+				continue
+			}
+			req.Results[i].TeamName = participant.TeamName
+		}
+	}
+
 	// Bulk upsert results
 	if err := h.resultRepo.BulkUpsert(ctx, matchID, req.Results); err != nil {
 		slog.Error("MatchResult.BulkUpdate: failed to bulk upsert results", "error", err, "match_id", matchID)
@@ -187,6 +201,18 @@ func (h *MatchResultHandler) UpdateSprintResults(c echo.Context) error {
 		})
 	}
 
+	// Populate team_name for each result from participant's current team
+	for i := range req.Results {
+		if req.Results[i].TeamName == nil {
+			participant, err := h.participantRepo.GetByID(ctx, req.Results[i].ParticipantID)
+			if err != nil {
+				slog.Error("MatchResult.UpdateSprintResults: failed to get participant", "error", err, "participant_id", req.Results[i].ParticipantID)
+				continue
+			}
+			req.Results[i].TeamName = participant.TeamName
+		}
+	}
+
 	// Bulk upsert sprint results only (preserves existing race results)
 	if err := h.resultRepo.BulkUpsertSprintResults(ctx, matchID, req.Results); err != nil {
 		slog.Error("MatchResult.UpdateSprintResults: failed to bulk upsert results", "error", err, "match_id", matchID)
@@ -254,6 +280,18 @@ func (h *MatchResultHandler) UpdateRaceResults(c echo.Context) error {
 			Error:   "server_error",
 			Message: "경기 정보를 불러오는데 실패했습니다",
 		})
+	}
+
+	// Populate team_name for each result from participant's current team
+	for i := range req.Results {
+		if req.Results[i].TeamName == nil {
+			participant, err := h.participantRepo.GetByID(ctx, req.Results[i].ParticipantID)
+			if err != nil {
+				slog.Error("MatchResult.UpdateRaceResults: failed to get participant", "error", err, "participant_id", req.Results[i].ParticipantID)
+				continue
+			}
+			req.Results[i].TeamName = participant.TeamName
+		}
 	}
 
 	// Bulk upsert race results only (preserves existing sprint results)

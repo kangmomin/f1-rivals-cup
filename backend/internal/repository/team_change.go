@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/f1-rivals-cup/backend/internal/database"
 	"github.com/f1-rivals-cup/backend/internal/model"
@@ -14,7 +13,6 @@ import (
 var (
 	ErrTeamChangeRequestNotFound = errors.New("team change request not found")
 	ErrPendingRequestExists      = errors.New("pending team change request already exists")
-	ErrTeamHistoryNotFound       = errors.New("team history not found")
 )
 
 type TeamChangeRepository struct {
@@ -265,99 +263,8 @@ func (r *TeamChangeRepository) DeleteRequest(ctx context.Context, id uuid.UUID) 
 	return nil
 }
 
-// CreateTeamHistory creates a new team history record
-func (r *TeamChangeRepository) CreateTeamHistory(ctx context.Context, history *model.ParticipantTeamHistory) error {
-	query := `
-		INSERT INTO participant_team_history (participant_id, team_name, effective_from, change_request_id)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at
-	`
 
-	return r.db.Pool.QueryRowContext(ctx, query,
-		history.ParticipantID,
-		history.TeamName,
-		history.EffectiveFrom,
-		history.ChangeRequestID,
-	).Scan(&history.ID, &history.CreatedAt)
-}
-
-// EndCurrentTeamHistory ends the current team history record for a participant
-func (r *TeamChangeRepository) EndCurrentTeamHistory(ctx context.Context, participantID uuid.UUID, endTime time.Time) error {
-	query := `
-		UPDATE participant_team_history
-		SET effective_until = $1
-		WHERE participant_id = $2 AND effective_until IS NULL
-	`
-
-	_, err := r.db.Pool.ExecContext(ctx, query, endTime, participantID)
-	return err
-}
-
-// GetTeamHistoryByParticipant retrieves all team history for a participant
-func (r *TeamChangeRepository) GetTeamHistoryByParticipant(ctx context.Context, participantID uuid.UUID) ([]*model.ParticipantTeamHistory, error) {
-	query := `
-		SELECT id, participant_id, team_name, effective_from, effective_until, change_request_id, created_at
-		FROM participant_team_history
-		WHERE participant_id = $1
-		ORDER BY effective_from DESC
-	`
-
-	rows, err := r.db.Pool.QueryContext(ctx, query, participantID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var histories []*model.ParticipantTeamHistory
-	for rows.Next() {
-		h := &model.ParticipantTeamHistory{}
-		if err := rows.Scan(
-			&h.ID,
-			&h.ParticipantID,
-			&h.TeamName,
-			&h.EffectiveFrom,
-			&h.EffectiveUntil,
-			&h.ChangeRequestID,
-			&h.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		histories = append(histories, h)
-	}
-
-	return histories, nil
-}
-
-// GetCurrentTeamHistory gets the current (active) team history record for a participant
-func (r *TeamChangeRepository) GetCurrentTeamHistory(ctx context.Context, participantID uuid.UUID) (*model.ParticipantTeamHistory, error) {
-	query := `
-		SELECT id, participant_id, team_name, effective_from, effective_until, change_request_id, created_at
-		FROM participant_team_history
-		WHERE participant_id = $1 AND effective_until IS NULL
-	`
-
-	h := &model.ParticipantTeamHistory{}
-	err := r.db.Pool.QueryRowContext(ctx, query, participantID).Scan(
-		&h.ID,
-		&h.ParticipantID,
-		&h.TeamName,
-		&h.EffectiveFrom,
-		&h.EffectiveUntil,
-		&h.ChangeRequestID,
-		&h.CreatedAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrTeamHistoryNotFound
-		}
-		return nil, err
-	}
-
-	return h, nil
-}
-
-// ApproveTeamChange approves a team change request and updates team history (transactional)
+// ApproveTeamChange approves a team change request and updates participant's team_name
 func (r *TeamChangeRepository) ApproveTeamChange(ctx context.Context, requestID uuid.UUID, reviewedBy uuid.UUID) error {
 	tx, err := r.db.Pool.BeginTx(ctx, nil)
 	if err != nil {
@@ -377,27 +284,6 @@ func (r *TeamChangeRepository) ApproveTeamChange(ctx context.Context, requestID 
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrTeamChangeRequestNotFound
 		}
-		return err
-	}
-
-	now := time.Now()
-
-	// End current team history
-	_, err = tx.ExecContext(ctx, `
-		UPDATE participant_team_history
-		SET effective_until = $1
-		WHERE participant_id = $2 AND effective_until IS NULL
-	`, now, participantID)
-	if err != nil {
-		return err
-	}
-
-	// Create new team history record
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO participant_team_history (participant_id, team_name, effective_from, change_request_id)
-		VALUES ($1, $2, $3, $4)
-	`, participantID, requestedTeamName, now, requestID)
-	if err != nil {
 		return err
 	}
 

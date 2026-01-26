@@ -25,10 +25,11 @@ func NewMatchResultRepository(db *database.DB) *MatchResultRepository {
 // Upsert creates or updates a match result
 func (r *MatchResultRepository) Upsert(ctx context.Context, result *model.MatchResult) error {
 	query := `
-		INSERT INTO match_results (match_id, participant_id, position, points, fastest_lap, dnf, dnf_reason, sprint_position, sprint_points)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO match_results (match_id, participant_id, team_name, position, points, fastest_lap, dnf, dnf_reason, sprint_position, sprint_points)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (match_id, participant_id)
 		DO UPDATE SET
+			team_name = COALESCE(EXCLUDED.team_name, match_results.team_name),
 			position = EXCLUDED.position,
 			points = EXCLUDED.points,
 			fastest_lap = EXCLUDED.fastest_lap,
@@ -43,6 +44,7 @@ func (r *MatchResultRepository) Upsert(ctx context.Context, result *model.MatchR
 	err := r.db.Pool.QueryRowContext(ctx, query,
 		result.MatchID,
 		result.ParticipantID,
+		result.StoredTeamName,
 		result.Position,
 		result.Points,
 		result.FastestLap,
@@ -58,7 +60,7 @@ func (r *MatchResultRepository) Upsert(ctx context.Context, result *model.MatchR
 // GetByID retrieves a match result by ID
 func (r *MatchResultRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.MatchResult, error) {
 	query := `
-		SELECT mr.id, mr.match_id, mr.participant_id, mr.position, mr.points, mr.fastest_lap,
+		SELECT mr.id, mr.match_id, mr.participant_id, mr.team_name, mr.position, mr.points, mr.fastest_lap,
 		       mr.dnf, mr.dnf_reason, mr.sprint_position, mr.sprint_points, mr.created_at, mr.updated_at,
 		       u.nickname, lp.team_name
 		FROM match_results mr
@@ -72,6 +74,7 @@ func (r *MatchResultRepository) GetByID(ctx context.Context, id uuid.UUID) (*mod
 		&result.ID,
 		&result.MatchID,
 		&result.ParticipantID,
+		&result.StoredTeamName,
 		&result.Position,
 		&result.Points,
 		&result.FastestLap,
@@ -98,7 +101,7 @@ func (r *MatchResultRepository) GetByID(ctx context.Context, id uuid.UUID) (*mod
 // ListByMatch retrieves all results for a match
 func (r *MatchResultRepository) ListByMatch(ctx context.Context, matchID uuid.UUID) ([]*model.MatchResult, error) {
 	query := `
-		SELECT mr.id, mr.match_id, mr.participant_id, mr.position, mr.points, mr.fastest_lap,
+		SELECT mr.id, mr.match_id, mr.participant_id, mr.team_name, mr.position, mr.points, mr.fastest_lap,
 		       mr.dnf, mr.dnf_reason, mr.sprint_position, mr.sprint_points, mr.created_at, mr.updated_at,
 		       u.nickname, lp.team_name
 		FROM match_results mr
@@ -123,6 +126,7 @@ func (r *MatchResultRepository) ListByMatch(ctx context.Context, matchID uuid.UU
 			&r.ID,
 			&r.MatchID,
 			&r.ParticipantID,
+			&r.StoredTeamName,
 			&r.Position,
 			&r.Points,
 			&r.FastestLap,
@@ -231,11 +235,11 @@ func (r *MatchResultRepository) GetLeagueStandings(ctx context.Context, leagueID
 }
 
 // GetTeamStandings returns aggregated team standings for a league
-// Uses historical team data when available, falling back to current team assignment
+// Uses team_name stored in match_results at the time of result recording
 func (r *MatchResultRepository) GetTeamStandings(ctx context.Context, leagueID uuid.UUID) ([]model.TeamStandingsEntry, error) {
 	query := `
 		SELECT
-			COALESCE(pth.team_name, lp.team_name) as team_name,
+			mr.team_name,
 			COALESCE(SUM(mr.points), 0) + COALESCE(SUM(mr.sprint_points), 0) as total_points,
 			COALESCE(SUM(mr.points), 0) as race_points,
 			COALESCE(SUM(mr.sprint_points), 0) as sprint_points,
@@ -247,15 +251,12 @@ func (r *MatchResultRepository) GetTeamStandings(ctx context.Context, leagueID u
 		FROM match_results mr
 		JOIN matches m ON mr.match_id = m.id
 		JOIN league_participants lp ON mr.participant_id = lp.id
-		LEFT JOIN participant_team_history pth ON pth.participant_id = lp.id
-			AND m.match_date >= pth.effective_from
-			AND (pth.effective_until IS NULL OR m.match_date < pth.effective_until)
 		WHERE m.league_id = $1
 		  AND lp.status = 'approved'
 		  AND 'player' = ANY(lp.roles)
-		  AND COALESCE(pth.team_name, lp.team_name) IS NOT NULL
-		  AND COALESCE(pth.team_name, lp.team_name) != ''
-		GROUP BY COALESCE(pth.team_name, lp.team_name)
+		  AND mr.team_name IS NOT NULL
+		  AND mr.team_name != ''
+		GROUP BY mr.team_name
 		ORDER BY total_points DESC, wins DESC, podiums DESC, fastest_laps DESC
 	`
 
@@ -298,10 +299,11 @@ func (r *MatchResultRepository) BulkUpsert(ctx context.Context, matchID uuid.UUI
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO match_results (match_id, participant_id, position, points, fastest_lap, dnf, dnf_reason, sprint_position, sprint_points)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO match_results (match_id, participant_id, team_name, position, points, fastest_lap, dnf, dnf_reason, sprint_position, sprint_points)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (match_id, participant_id)
 		DO UPDATE SET
+			team_name = COALESCE(EXCLUDED.team_name, match_results.team_name),
 			position = EXCLUDED.position,
 			points = EXCLUDED.points,
 			fastest_lap = EXCLUDED.fastest_lap,
@@ -316,6 +318,7 @@ func (r *MatchResultRepository) BulkUpsert(ctx context.Context, matchID uuid.UUI
 		_, err := tx.ExecContext(ctx, query,
 			matchID,
 			result.ParticipantID,
+			result.TeamName,
 			result.Position,
 			result.Points,
 			result.FastestLap,
@@ -341,10 +344,11 @@ func (r *MatchResultRepository) BulkUpsertSprintResults(ctx context.Context, mat
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO match_results (match_id, participant_id, sprint_position, sprint_points)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO match_results (match_id, participant_id, team_name, sprint_position, sprint_points)
+		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (match_id, participant_id)
 		DO UPDATE SET
+			team_name = COALESCE(EXCLUDED.team_name, match_results.team_name),
 			sprint_position = EXCLUDED.sprint_position,
 			sprint_points = EXCLUDED.sprint_points,
 			updated_at = NOW()
@@ -354,6 +358,7 @@ func (r *MatchResultRepository) BulkUpsertSprintResults(ctx context.Context, mat
 		_, err := tx.ExecContext(ctx, query,
 			matchID,
 			result.ParticipantID,
+			result.TeamName,
 			result.SprintPosition,
 			result.SprintPoints,
 		)
@@ -374,10 +379,11 @@ func (r *MatchResultRepository) BulkUpsertRaceResults(ctx context.Context, match
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO match_results (match_id, participant_id, position, points, fastest_lap, dnf, dnf_reason)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO match_results (match_id, participant_id, team_name, position, points, fastest_lap, dnf, dnf_reason)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (match_id, participant_id)
 		DO UPDATE SET
+			team_name = COALESCE(EXCLUDED.team_name, match_results.team_name),
 			position = EXCLUDED.position,
 			points = EXCLUDED.points,
 			fastest_lap = EXCLUDED.fastest_lap,
@@ -390,6 +396,7 @@ func (r *MatchResultRepository) BulkUpsertRaceResults(ctx context.Context, match
 		_, err := tx.ExecContext(ctx, query,
 			matchID,
 			result.ParticipantID,
+			result.TeamName,
 			result.Position,
 			result.Points,
 			result.FastestLap,

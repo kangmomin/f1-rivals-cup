@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { matchService, Match, CreateMatchResultRequest } from '../../services/match'
 import { participantService, LeagueParticipant } from '../../services/participant'
+import { teamService, Team } from '../../services/team'
 
 // F1 Points System
 const RACE_POINTS: Record<number, number> = {
@@ -34,19 +35,21 @@ interface MatchResultsEditorProps {
 
 export default function MatchResultsEditor({ match, onClose, onSave }: MatchResultsEditorProps) {
   const [participants, setParticipants] = useState<LeagueParticipant[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
   const [results, setResults] = useState<ResultRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load participants and existing results
+  // Load participants, teams, and existing results
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
       setError(null)
       try {
-        const [participantsRes, resultsRes] = await Promise.all([
+        const [participantsRes, teamsRes, resultsRes] = await Promise.all([
           participantService.listByLeague(match.league_id, 'approved'),
+          teamService.listByLeague(match.league_id),
           matchService.getResults(match.id),
         ])
 
@@ -55,6 +58,7 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
           p.roles.includes('player') || p.roles.includes('reserve')
         )
         setParticipants(players)
+        setTeams(teamsRes.teams || [])
 
         // Initialize results from existing data or empty
         if (resultsRes.results.length > 0) {
@@ -62,7 +66,8 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
             id: `row-${idx}`,
             participantId: r.participant_id,
             participantName: r.participant_name || '',
-            teamName: r.team_name || '',
+            // Use stored_team_name if available (historical), otherwise fall back to team_name
+            teamName: r.stored_team_name || r.team_name || '',
             position: r.position ?? null,
             points: r.points,
             fastestLap: r.fastest_lap,
@@ -213,6 +218,7 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
     try {
       const requestData: CreateMatchResultRequest[] = results.map(r => ({
         participant_id: r.participantId,
+        team_name: r.teamName || undefined,
         position: r.position ?? undefined,
         points: r.points,
         fastest_lap: r.fastestLap,
@@ -329,11 +335,24 @@ export default function MatchResultsEditor({ match, onClose, onSave }: MatchResu
                           </select>
                         </td>
 
-                        {/* Team (auto-filled) */}
+                        {/* Team (auto-filled, editable) */}
                         <td className="py-3 px-2">
-                          <span className="text-text-secondary text-sm">
-                            {row.teamName || '-'}
-                          </span>
+                          <select
+                            value={row.teamName}
+                            onChange={(e) => updateResultRow(row.id, 'teamName', e.target.value)}
+                            className="w-full bg-carbon border border-steel rounded px-2 py-2 text-white text-sm focus:border-neon focus:outline-none"
+                          >
+                            <option value="">팀 없음</option>
+                            {teams.map(team => (
+                              <option key={team.id} value={team.name}>
+                                {team.name}
+                              </option>
+                            ))}
+                            {/* Show current value if not in teams list */}
+                            {row.teamName && !teams.find(t => t.name === row.teamName) && (
+                              <option value={row.teamName}>{row.teamName}</option>
+                            )}
+                          </select>
                         </td>
 
                         {/* Position */}

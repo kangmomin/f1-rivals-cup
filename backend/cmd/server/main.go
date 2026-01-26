@@ -82,7 +82,7 @@ func main() {
 	leagueHandler := handler.NewLeagueHandler(leagueRepo)
 	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo, accountRepo)
 	matchHandler := handler.NewMatchHandler(matchRepo, leagueRepo)
-	matchResultHandler := handler.NewMatchResultHandler(matchResultRepo, matchRepo, leagueRepo)
+	matchResultHandler := handler.NewMatchResultHandler(matchResultRepo, matchRepo, leagueRepo, participantRepo)
 	teamHandler := handler.NewTeamHandler(teamRepo, leagueRepo, accountRepo)
 	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo, aiService)
 	commentHandler := handler.NewCommentHandler(commentRepo)
