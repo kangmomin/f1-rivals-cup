@@ -16,7 +16,7 @@ const PARTICIPANT_STATUS_COLORS: Record<string, string> = {
 }
 
 export default function MyPage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [participations, setParticipations] = useState<LeagueParticipant[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -54,6 +54,18 @@ export default function MyPage() {
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('ko-KR')
+  }
+
+  if (authLoading) {
+    return (
+      <main className="flex-1 bg-carbon">
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="text-center py-16">
+            <p className="text-text-secondary">로딩 중...</p>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   if (!isAuthenticated) {
