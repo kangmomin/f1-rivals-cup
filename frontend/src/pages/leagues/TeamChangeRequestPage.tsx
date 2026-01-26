@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { leagueService, League } from '../../services/league'
-import { participantService, LeagueParticipant } from '../../services/participant'
+import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
 import { teamService, Team } from '../../services/team'
 import { teamChangeService, TeamChangeRequest, STATUS_LABELS } from '../../services/teamChange'
 
@@ -11,6 +11,8 @@ const STATUS_COLORS: Record<string, string> = {
   approved: 'bg-profit/10 text-profit border border-profit/30',
   rejected: 'bg-loss/10 text-loss border border-loss/30',
 }
+
+const ALL_ROLES: ParticipantRole[] = ['director', 'player', 'reserve', 'engineer']
 
 export default function TeamChangeRequestPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,6 +29,7 @@ export default function TeamChangeRequestPage() {
 
   // Form state
   const [selectedTeam, setSelectedTeam] = useState('')
+  const [selectedRoles, setSelectedRoles] = useState<ParticipantRole[]>([])
   const [reason, setReason] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -64,6 +67,7 @@ export default function TeamChangeRequestPage() {
         }
 
         setParticipant(statusData.participant)
+        setSelectedRoles(statusData.participant.roles || [])
 
         // Fetch my team change requests
         const requestsData = await teamChangeService.listMyRequests(id)
@@ -79,6 +83,14 @@ export default function TeamChangeRequestPage() {
     fetchData()
   }, [id, isAuthenticated, navigate])
 
+  const toggleRole = (role: ParticipantRole) => {
+    setSelectedRoles(prev =>
+      prev.includes(role)
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    )
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!id || !selectedTeam) return
@@ -90,10 +102,12 @@ export default function TeamChangeRequestPage() {
     try {
       const newRequest = await teamChangeService.create(id, {
         requested_team_name: selectedTeam,
+        requested_roles: selectedRoles,
         reason: reason || undefined,
       })
       setMyRequests([newRequest, ...myRequests])
       setSelectedTeam('')
+      setSelectedRoles(participant?.roles || [])
       setReason('')
       setSubmitSuccess(true)
     } catch (err: any) {
@@ -218,6 +232,30 @@ export default function TeamChangeRequestPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-white mb-3">
+                  이적 후 역할 <span className="text-racing">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="역할 선택">
+                  {ALL_ROLES.map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => toggleRole(role)}
+                      aria-pressed={selectedRoles.includes(role)}
+                      className={`px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
+                        selectedRoles.includes(role)
+                          ? 'bg-neon/10 border-neon text-neon'
+                          : 'bg-carbon border-steel text-text-secondary hover:border-white hover:text-white'
+                      }`}
+                    >
+                      {ROLE_LABELS[role]}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-text-secondary mt-2">복수 선택 가능 (예: 감독 겸 선수)</p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">
                   사유 (선택)
                 </label>
@@ -231,7 +269,7 @@ export default function TeamChangeRequestPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting || !selectedTeam || availableTeams.length === 0}
+                disabled={isSubmitting || !selectedTeam || selectedRoles.length === 0 || availableTeams.length === 0}
                 className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? '신청 중...' : '팀 변경 신청'}
@@ -269,6 +307,9 @@ export default function TeamChangeRequestPage() {
                       </div>
                       <div className="text-sm text-text-secondary space-y-1">
                         <p>신청일: {formatDate(request.created_at)}</p>
+                        {request.requested_roles && request.requested_roles.length > 0 && (
+                          <p>신청 역할: {request.requested_roles.map(r => ROLE_LABELS[r]).join(', ')}</p>
+                        )}
                         {request.reason && (
                           <p>사유: {request.reason}</p>
                         )}
