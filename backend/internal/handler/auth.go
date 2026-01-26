@@ -19,16 +19,40 @@ import (
 
 // AuthHandler handles authentication requests
 type AuthHandler struct {
-	userRepo   *repository.UserRepository
-	jwtService *auth.JWTService
+	userRepo         *repository.UserRepository
+	refreshTokenRepo *repository.RefreshTokenRepository
+	jwtService       *auth.JWTService
+	blacklist        *auth.TokenBlacklist
 }
 
-// NewAuthHandler creates a new AuthHandler
+// NewAuthHandler creates a new AuthHandler (deprecated: use NewAuthHandlerWithBlacklist)
 func NewAuthHandler(userRepo *repository.UserRepository, jwtService *auth.JWTService) *AuthHandler {
 	return &AuthHandler{
-		userRepo:   userRepo,
-		jwtService: jwtService,
+		userRepo:         userRepo,
+		refreshTokenRepo: nil,
+		jwtService:       jwtService,
+		blacklist:        nil,
 	}
+}
+
+// NewAuthHandlerWithBlacklist creates a new AuthHandler with full security features
+func NewAuthHandlerWithBlacklist(
+	userRepo *repository.UserRepository,
+	refreshTokenRepo *repository.RefreshTokenRepository,
+	jwtService *auth.JWTService,
+	blacklist *auth.TokenBlacklist,
+) *AuthHandler {
+	return &AuthHandler{
+		userRepo:         userRepo,
+		refreshTokenRepo: refreshTokenRepo,
+		jwtService:       jwtService,
+		blacklist:        blacklist,
+	}
+}
+
+// Blacklist returns the token blacklist (for middleware injection)
+func (h *AuthHandler) Blacklist() *auth.TokenBlacklist {
+	return h.blacklist
 }
 
 // Register handles POST /api/v1/auth/register
@@ -215,13 +239,33 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
+	// Add access token to blacklist if blacklist is enabled
+	if h.blacklist != nil && claims.ExpiresAt != nil {
+		h.blacklist.Add(tokenString, claims.ExpiresAt.Time)
+	}
+
+	// Get refresh token from cookie to delete specific session
+	refreshToken := ""
+	if cookie, err := c.Cookie("refresh_token"); err == nil && cookie.Value != "" {
+		refreshToken = cookie.Value
+	}
+
 	// Clear refresh token from database
-	if err := h.userRepo.ClearRefreshToken(ctx, claims.UserID); err != nil {
-		slog.Error("Auth.Logout: failed to clear refresh token", "error", err, "userID", claims.UserID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "서버 오류가 발생했습니다",
-		})
+	if h.refreshTokenRepo != nil && refreshToken != "" {
+		// Multi-device: only delete the current session
+		if err := h.refreshTokenRepo.DeleteByToken(ctx, refreshToken); err != nil {
+			slog.Error("Auth.Logout: failed to delete refresh token", "error", err, "userID", claims.UserID)
+			// Don't fail the logout request, continue
+		}
+	} else {
+		// Legacy: clear from users table
+		if err := h.userRepo.ClearRefreshToken(ctx, claims.UserID); err != nil {
+			slog.Error("Auth.Logout: failed to clear refresh token", "error", err, "userID", claims.UserID)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "서버 오류가 발생했습니다",
+			})
+		}
 	}
 
 	// Clear httpOnly cookie
@@ -266,7 +310,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 		})
 	}
 
-	// Validate refresh token
+	// Validate refresh token (JWT validation)
 	userID, err := h.jwtService.ValidateRefreshToken(req.RefreshToken)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
@@ -277,27 +321,62 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	// Get user from database
-	user, err := h.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+	// Multi-device support: verify token exists in database
+	if h.refreshTokenRepo != nil {
+		storedToken, err := h.refreshTokenRepo.GetByToken(ctx, req.RefreshToken)
+		if err != nil {
+			if errors.Is(err, repository.ErrRefreshTokenNotFound) || errors.Is(err, repository.ErrRefreshTokenExpired) {
+				return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+					Error:   "invalid_token",
+					Message: "유효하지 않은 토큰입니다",
+				})
+			}
+			slog.Error("Auth.RefreshToken: failed to get stored token", "error", err, "userID", userID)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "서버 오류가 발생했습니다",
+			})
+		}
+
+		// Verify userID matches
+		if storedToken.UserID != userID {
 			return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
 				Error:   "invalid_token",
 				Message: "유효하지 않은 토큰입니다",
 			})
 		}
+	} else {
+		// Legacy: verify against users table
+		user, err := h.userRepo.GetByID(ctx, userID)
+		if err != nil {
+			if errors.Is(err, repository.ErrUserNotFound) {
+				return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+					Error:   "invalid_token",
+					Message: "유효하지 않은 토큰입니다",
+				})
+			}
+			slog.Error("Auth.RefreshToken: failed to get user by ID", "error", err, "userID", userID)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "서버 오류가 발생했습니다",
+			})
+		}
+
+		if user.RefreshToken == nil || *user.RefreshToken != req.RefreshToken {
+			return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+				Error:   "invalid_token",
+				Message: "유효하지 않은 토큰입니다",
+			})
+		}
+	}
+
+	// Get user from database for token generation
+	user, err := h.userRepo.GetByID(ctx, userID)
+	if err != nil {
 		slog.Error("Auth.RefreshToken: failed to get user by ID", "error", err, "userID", userID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
 			Message: "서버 오류가 발생했습니다",
-		})
-	}
-
-	// Verify refresh token matches stored token
-	if user.RefreshToken == nil || *user.RefreshToken != req.RefreshToken {
-		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
-			Error:   "invalid_token",
-			Message: "유효하지 않은 토큰입니다",
 		})
 	}
 
@@ -320,13 +399,44 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 		})
 	}
 
-	// Save new refresh token
-	if err := h.userRepo.UpdateRefreshToken(ctx, user.ID, newRefreshToken); err != nil {
-		slog.Error("Auth.RefreshToken: failed to update refresh token", "error", err, "userID", user.ID)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "서버 오류가 발생했습니다",
-		})
+	// Save new refresh token (rotate token)
+	if h.refreshTokenRepo != nil {
+		// Extract device info
+		deviceInfo := c.Request().UserAgent()
+		if len(deviceInfo) > 255 {
+			deviceInfo = deviceInfo[:255]
+		}
+		ipAddress := c.RealIP()
+
+		newRT := &model.RefreshToken{
+			UserID:     user.ID,
+			Token:      newRefreshToken,
+			DeviceInfo: &deviceInfo,
+			IPAddress:  &ipAddress,
+			ExpiresAt:  time.Now().Add(h.jwtService.RefreshExpiry()),
+		}
+		if err := h.refreshTokenRepo.RotateToken(ctx, req.RefreshToken, newRT); err != nil {
+			// Token was already used by concurrent request (race condition)
+			if errors.Is(err, repository.ErrTokenAlreadyUsed) {
+				return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+					Error:   "token_reused",
+					Message: "토큰이 이미 사용되었습니다. 다시 로그인해주세요",
+				})
+			}
+			slog.Error("Auth.RefreshToken: failed to rotate token", "error", err, "userID", user.ID)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "서버 오류가 발생했습니다",
+			})
+		}
+	} else {
+		if err := h.userRepo.UpdateRefreshToken(ctx, user.ID, newRefreshToken); err != nil {
+			slog.Error("Auth.RefreshToken: failed to update refresh token", "error", err, "userID", user.ID)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "서버 오류가 발생했습니다",
+			})
+		}
 	}
 
 	// Set httpOnly cookie for new refresh token
@@ -410,13 +520,38 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
-	// Save refresh token
-	if err := h.userRepo.UpdateRefreshToken(ctx, user.ID, refreshToken); err != nil {
-		slog.Error("Auth.Login: failed to update refresh token", "error", err, "email", req.Email)
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			Error:   "server_error",
-			Message: "서버 오류가 발생했습니다",
-		})
+	// Save refresh token (multi-device support if RefreshTokenRepository is available)
+	if h.refreshTokenRepo != nil {
+		// Extract device info from User-Agent
+		deviceInfo := c.Request().UserAgent()
+		if len(deviceInfo) > 255 {
+			deviceInfo = deviceInfo[:255]
+		}
+		ipAddress := c.RealIP()
+
+		rt := &model.RefreshToken{
+			UserID:     user.ID,
+			Token:      refreshToken,
+			DeviceInfo: &deviceInfo,
+			IPAddress:  &ipAddress,
+			ExpiresAt:  time.Now().Add(h.jwtService.RefreshExpiry()),
+		}
+		if err := h.refreshTokenRepo.Create(ctx, rt); err != nil {
+			slog.Error("Auth.Login: failed to create refresh token", "error", err, "email", req.Email)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "서버 오류가 발생했습니다",
+			})
+		}
+	} else {
+		// Fallback to legacy single-token storage
+		if err := h.userRepo.UpdateRefreshToken(ctx, user.ID, refreshToken); err != nil {
+			slog.Error("Auth.Login: failed to update refresh token", "error", err, "email", req.Email)
+			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+				Error:   "server_error",
+				Message: "서버 오류가 발생했습니다",
+			})
+		}
 	}
 
 	// Set httpOnly cookie for refresh token
@@ -556,7 +691,12 @@ func (h *AuthHandler) ConfirmPasswordReset(c echo.Context) error {
 		})
 	}
 
-	// Clear all refresh tokens to force re-login
+	// Clear all refresh tokens to force re-login from all devices
+	if h.refreshTokenRepo != nil {
+		if err := h.refreshTokenRepo.DeleteAllByUserID(ctx, user.ID); err != nil {
+			slog.Error("Auth.ConfirmPasswordReset: failed to delete all refresh tokens", "error", err, "userID", user.ID)
+		}
+	}
 	if err := h.userRepo.ClearRefreshToken(ctx, user.ID); err != nil {
 		// Log error but don't fail the request
 		slog.Error("Auth.ConfirmPasswordReset: failed to clear refresh token", "error", err, "userID", user.ID)
