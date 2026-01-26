@@ -74,6 +74,7 @@ func main() {
 
 	// Initialize repositories for team change
 	teamChangeRepo := repository.NewTeamChangeRepository(db)
+	teamChangeActivityRepo := repository.NewTeamChangeActivityRepository(db)
 
 	// Initialize handlers
 	healthHandler := handler.NewHealthHandler()
@@ -87,7 +88,7 @@ func main() {
 	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo, aiService)
 	commentHandler := handler.NewCommentHandler(commentRepo)
 	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
-	teamChangeHandler := handler.NewTeamChangeHandler(teamChangeRepo, participantRepo, teamRepo, leagueRepo)
+	teamChangeHandler := handler.NewTeamChangeHandler(teamChangeRepo, participantRepo, teamRepo, leagueRepo, teamChangeActivityRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -175,6 +176,7 @@ func main() {
 
 	// Admin team change request routes
 	adminGroup.GET("/leagues/:id/team-change-requests", teamChangeHandler.ListByLeague)
+	adminGroup.GET("/leagues/:id/team-change-activity", teamChangeHandler.ListActivity)
 
 	// Admin news routes (protected with permissions)
 	// AI generate endpoint with rate limiting (30 req/min, burst 10) - disabled in dev

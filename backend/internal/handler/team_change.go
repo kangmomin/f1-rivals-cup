@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
 	"github.com/f1-rivals-cup/backend/internal/repository"
@@ -16,6 +17,7 @@ type TeamChangeHandler struct {
 	participantRepo *repository.ParticipantRepository
 	teamRepo        *repository.TeamRepository
 	leagueRepo      *repository.LeagueRepository
+	activityRepo    *repository.TeamChangeActivityRepository
 }
 
 func NewTeamChangeHandler(
@@ -23,12 +25,14 @@ func NewTeamChangeHandler(
 	participantRepo *repository.ParticipantRepository,
 	teamRepo *repository.TeamRepository,
 	leagueRepo *repository.LeagueRepository,
+	activityRepo *repository.TeamChangeActivityRepository,
 ) *TeamChangeHandler {
 	return &TeamChangeHandler{
 		teamChangeRepo:  teamChangeRepo,
 		participantRepo: participantRepo,
 		teamRepo:        teamRepo,
 		leagueRepo:      leagueRepo,
+		activityRepo:    activityRepo,
 	}
 }
 
@@ -141,17 +145,38 @@ func (h *TeamChangeHandler) CreateRequest(c echo.Context) error {
 		})
 	}
 
-	// Check player count in target team (max 2)
-	// Check if participant has player role
-	hasPlayerRole := false
-	for _, role := range participant.Roles {
+	// Validate requested roles if provided
+	validRoles := map[string]bool{
+		string(model.RoleDirector): true,
+		string(model.RolePlayer):   true,
+		string(model.RoleReserve):  true,
+		string(model.RoleEngineer): true,
+	}
+	for _, role := range req.RequestedRoles {
+		if !validRoles[role] {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_role",
+				Message: "유효하지 않은 역할입니다: " + role,
+			})
+		}
+	}
+
+	// Determine effective roles (use requested_roles if provided, otherwise keep current)
+	effectiveRoles := req.RequestedRoles
+	if len(effectiveRoles) == 0 {
+		effectiveRoles = []string(participant.Roles)
+	}
+
+	// Check player count in target team (max 2) if becoming/remaining a player
+	willBePlayer := false
+	for _, role := range effectiveRoles {
 		if role == string(model.RolePlayer) {
-			hasPlayerRole = true
+			willBePlayer = true
 			break
 		}
 	}
 
-	if hasPlayerRole {
+	if willBePlayer {
 		playerCount, err := h.participantRepo.CountPlayersByTeam(ctx, leagueID, req.RequestedTeamName)
 		if err != nil {
 			slog.Error("TeamChange.CreateRequest: failed to count players", "error", err)
@@ -173,8 +198,13 @@ func (h *TeamChangeHandler) CreateRequest(c echo.Context) error {
 		ParticipantID:     participant.ID,
 		CurrentTeamName:   participant.TeamName,
 		RequestedTeamName: req.RequestedTeamName,
+		CurrentRoles:      participant.Roles,
 		Status:            model.TeamChangeStatusPending,
 		Reason:            req.Reason,
+	}
+	// Only set requested_roles if different from current
+	if len(req.RequestedRoles) > 0 {
+		teamChangeReq.RequestedRoles = req.RequestedRoles
 	}
 
 	if err := h.teamChangeRepo.CreateRequest(ctx, teamChangeReq); err != nil {
@@ -189,6 +219,31 @@ func (h *TeamChangeHandler) CreateRequest(c echo.Context) error {
 			Error:   "server_error",
 			Message: "팀 변경 신청에 실패했습니다",
 		})
+	}
+
+	// Log activity (non-blocking)
+	details := map[string]any{
+		"requested_team_name": req.RequestedTeamName,
+		"current_roles":       []string(participant.Roles),
+	}
+	if participant.TeamName != nil {
+		details["current_team_name"] = *participant.TeamName
+	}
+	if len(req.RequestedRoles) > 0 {
+		details["requested_roles"] = req.RequestedRoles
+	}
+	if req.Reason != nil {
+		details["reason"] = *req.Reason
+	}
+	activityLog := &model.TeamChangeActivityLog{
+		ActorID:       userID,
+		RequestID:     teamChangeReq.ID,
+		ParticipantID: participant.ID,
+		ActionType:    model.TeamChangeActionCreate,
+		Details:       details,
+	}
+	if err := h.activityRepo.Create(ctx, activityLog); err != nil {
+		slog.Error("TeamChange: failed to log activity", "error", err)
 	}
 
 	return c.JSON(http.StatusCreated, teamChangeReq)
@@ -387,25 +442,22 @@ func (h *TeamChangeHandler) ReviewRequest(c echo.Context) error {
 
 	// Process the request
 	if req.Status == model.TeamChangeStatusApproved {
-		// Re-check player count before approving (in case it changed)
-		participant, err := h.participantRepo.GetByID(ctx, changeRequest.ParticipantID)
-		if err != nil {
-			slog.Error("TeamChange.ReviewRequest: failed to get participant", "error", err)
-			return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-				Error:   "server_error",
-				Message: "참가자 정보를 불러오는데 실패했습니다",
-			})
+		// Determine effective roles after approval
+		effectiveRoles := changeRequest.RequestedRoles
+		if len(effectiveRoles) == 0 {
+			effectiveRoles = changeRequest.CurrentRoles
 		}
 
-		hasPlayerRole := false
-		for _, role := range participant.Roles {
+		// Re-check player count before approving (in case it changed)
+		willBePlayer := false
+		for _, role := range effectiveRoles {
 			if role == string(model.RolePlayer) {
-				hasPlayerRole = true
+				willBePlayer = true
 				break
 			}
 		}
 
-		if hasPlayerRole {
+		if willBePlayer {
 			playerCount, err := h.participantRepo.CountPlayersByTeam(ctx, leagueID, changeRequest.RequestedTeamName)
 			if err != nil {
 				slog.Error("TeamChange.ReviewRequest: failed to count players", "error", err)
@@ -431,6 +483,30 @@ func (h *TeamChangeHandler) ReviewRequest(c echo.Context) error {
 			})
 		}
 
+		// Log activity (non-blocking)
+		details := map[string]any{
+			"requested_team_name": changeRequest.RequestedTeamName,
+		}
+		if changeRequest.CurrentTeamName != nil {
+			details["current_team_name"] = *changeRequest.CurrentTeamName
+		}
+		if len(changeRequest.CurrentRoles) > 0 {
+			details["current_roles"] = []string(changeRequest.CurrentRoles)
+		}
+		if len(changeRequest.RequestedRoles) > 0 {
+			details["requested_roles"] = []string(changeRequest.RequestedRoles)
+		}
+		activityLog := &model.TeamChangeActivityLog{
+			ActorID:       userID,
+			RequestID:     requestID,
+			ParticipantID: changeRequest.ParticipantID,
+			ActionType:    model.TeamChangeActionApprove,
+			Details:       details,
+		}
+		if err := h.activityRepo.Create(ctx, activityLog); err != nil {
+			slog.Error("TeamChange: failed to log activity", "error", err)
+		}
+
 		return c.JSON(http.StatusOK, map[string]string{
 			"message": "팀 변경 신청이 승인되었습니다",
 		})
@@ -442,6 +518,30 @@ func (h *TeamChangeHandler) ReviewRequest(c echo.Context) error {
 				Error:   "server_error",
 				Message: "팀 변경 거절에 실패했습니다",
 			})
+		}
+
+		// Log activity (non-blocking)
+		details := map[string]any{
+			"requested_team_name": changeRequest.RequestedTeamName,
+		}
+		if changeRequest.CurrentTeamName != nil {
+			details["current_team_name"] = *changeRequest.CurrentTeamName
+		}
+		if len(changeRequest.CurrentRoles) > 0 {
+			details["current_roles"] = []string(changeRequest.CurrentRoles)
+		}
+		if len(changeRequest.RequestedRoles) > 0 {
+			details["requested_roles"] = []string(changeRequest.RequestedRoles)
+		}
+		activityLog := &model.TeamChangeActivityLog{
+			ActorID:       userID,
+			RequestID:     requestID,
+			ParticipantID: changeRequest.ParticipantID,
+			ActionType:    model.TeamChangeActionReject,
+			Details:       details,
+		}
+		if err := h.activityRepo.Create(ctx, activityLog); err != nil {
+			slog.Error("TeamChange: failed to log activity", "error", err)
 		}
 
 		return c.JSON(http.StatusOK, map[string]string{
@@ -535,6 +635,20 @@ func (h *TeamChangeHandler) CancelRequest(c echo.Context) error {
 		})
 	}
 
+	// Prepare activity log details before deletion
+	details := map[string]any{
+		"requested_team_name": changeRequest.RequestedTeamName,
+	}
+	if changeRequest.CurrentTeamName != nil {
+		details["current_team_name"] = *changeRequest.CurrentTeamName
+	}
+	if len(changeRequest.CurrentRoles) > 0 {
+		details["current_roles"] = []string(changeRequest.CurrentRoles)
+	}
+	if len(changeRequest.RequestedRoles) > 0 {
+		details["requested_roles"] = []string(changeRequest.RequestedRoles)
+	}
+
 	// Delete the request
 	if err := h.teamChangeRepo.DeleteRequest(ctx, requestID); err != nil {
 		slog.Error("TeamChange.CancelRequest: failed to delete request", "error", err)
@@ -544,7 +658,68 @@ func (h *TeamChangeHandler) CancelRequest(c echo.Context) error {
 		})
 	}
 
+	// Log activity (non-blocking) - Note: log will be cascade-deleted with request
+	activityLog := &model.TeamChangeActivityLog{
+		ActorID:       userID,
+		RequestID:     requestID,
+		ParticipantID: participant.ID,
+		ActionType:    model.TeamChangeActionCancel,
+		Details:       details,
+	}
+	if err := h.activityRepo.Create(ctx, activityLog); err != nil {
+		// Expected to fail after request deletion due to FK constraint
+		slog.Debug("TeamChange: activity log for cancel skipped (request deleted)", "error", err)
+	}
+
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "팀 변경 신청이 취소되었습니다",
+	})
+}
+
+// ListActivity handles GET /api/v1/admin/leagues/:id/team-change-activity
+func (h *TeamChangeHandler) ListActivity(c echo.Context) error {
+	leagueIDStr := c.Param("id")
+	leagueID, err := uuid.Parse(leagueIDStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 리그 ID입니다",
+		})
+	}
+
+	// Parse pagination parameters
+	page := 1
+	limit := 20
+	if p := c.QueryParam("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if l := c.QueryParam("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+
+	ctx := c.Request().Context()
+
+	activities, total, err := h.activityRepo.ListByLeague(ctx, leagueID, page, limit)
+	if err != nil {
+		slog.Error("TeamChange.ListActivity: failed to list activities", "error", err)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "활동 로그를 불러오는데 실패했습니다",
+		})
+	}
+
+	if activities == nil {
+		activities = []*model.TeamChangeActivityLog{}
+	}
+
+	return c.JSON(http.StatusOK, model.TeamChangeActivityListResponse{
+		Activities: activities,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
 	})
 }
