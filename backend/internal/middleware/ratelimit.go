@@ -115,3 +115,26 @@ func RateLimitMiddleware(limiter *RateLimiter) echo.MiddlewareFunc {
 // AIRateLimiter is a pre-configured rate limiter for AI endpoints
 // Allows 30 requests per minute with a burst of 10
 var AIRateLimiter = NewRateLimiter(30, time.Minute, 10)
+
+// AuthRateLimiter is a pre-configured rate limiter for authentication endpoints
+// Allows 10 requests per minute with a burst of 5 (for refresh token, login, etc.)
+var AuthRateLimiter = NewRateLimiter(10, time.Minute, 5)
+
+// AuthRateLimitByIP creates a middleware that limits request rate by IP only
+// Used for unauthenticated endpoints like login/refresh
+func AuthRateLimitByIP(limiter *RateLimiter) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			key := "ip:" + c.RealIP()
+
+			if !limiter.Allow(key) {
+				return c.JSON(http.StatusTooManyRequests, model.ErrorResponse{
+					Error:   "rate_limit_exceeded",
+					Message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요",
+				})
+			}
+
+			return next(c)
+		}
+	}
+}

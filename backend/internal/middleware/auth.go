@@ -11,6 +11,11 @@ import (
 
 // AuthMiddleware creates a middleware for JWT authentication
 func AuthMiddleware(jwtService *auth.JWTService) echo.MiddlewareFunc {
+	return AuthMiddlewareWithBlacklist(jwtService, nil)
+}
+
+// AuthMiddlewareWithBlacklist creates a middleware for JWT authentication with token blacklist support
+func AuthMiddlewareWithBlacklist(jwtService *auth.JWTService, blacklist *auth.TokenBlacklist) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			authHeader := c.Request().Header.Get("Authorization")
@@ -22,6 +27,14 @@ func AuthMiddleware(jwtService *auth.JWTService) echo.MiddlewareFunc {
 			}
 
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+			// Check if token is blacklisted
+			if blacklist != nil && blacklist.IsBlacklisted(tokenString) {
+				return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+					Error:   "token_revoked",
+					Message: "토큰이 무효화되었습니다",
+				})
+			}
 
 			claims, err := jwtService.ValidateAccessToken(tokenString)
 			if err != nil {
