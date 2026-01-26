@@ -1,12 +1,12 @@
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
+  ReferenceDot,
 } from 'recharts'
 import { TeamStandingsEntry } from '../../services/standings'
 
@@ -18,26 +18,15 @@ const RANK_COLORS = {
   1: '#EAB308', // gold
   2: '#9CA3AF', // silver
   3: '#B45309', // bronze
-  default: '#0A84FF', // neon
 }
 
 export default function TeamPointsChart({ standings }: TeamPointsChartProps) {
-  const chartData = standings
-    .map((entry) => ({
-      name: entry.team_name,
-      points: entry.total_points,
-      rank: entry.rank,
-      driverCount: entry.driver_count,
-    }))
-    .reverse() // reverse for bottom-to-top display in horizontal bar
-
-  const formatPoints = (value: number) => {
-    return value.toString()
-  }
-
-  const getBarColor = (rank: number) => {
-    return RANK_COLORS[rank as keyof typeof RANK_COLORS] || RANK_COLORS.default
-  }
+  const chartData = standings.map((entry) => ({
+    name: entry.team_name,
+    points: entry.total_points,
+    rank: entry.rank,
+    driverCount: entry.driver_count,
+  }))
 
   if (chartData.length === 0) {
     return (
@@ -50,25 +39,24 @@ export default function TeamPointsChart({ standings }: TeamPointsChartProps) {
   return (
     <div className="h-64 md:h-80">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
+        <LineChart
           data={chartData}
-          layout="vertical"
-          margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
           <XAxis
-            type="number"
-            tickFormatter={formatPoints}
-            tick={{ fill: '#9CA3AF', fontSize: 12 }}
-            axisLine={{ stroke: '#374151' }}
-          />
-          <YAxis
-            type="category"
             dataKey="name"
             tick={{ fill: '#9CA3AF', fontSize: 11 }}
             axisLine={{ stroke: '#374151' }}
-            width={80}
-            tickLine={false}
+            angle={-45}
+            textAnchor="end"
+            height={60}
+            interval={0}
+          />
+          <YAxis
+            tick={{ fill: '#9CA3AF', fontSize: 12 }}
+            axisLine={{ stroke: '#374151' }}
+            tickFormatter={(value) => `${value}`}
           />
           <Tooltip
             contentStyle={{
@@ -86,12 +74,26 @@ export default function TeamPointsChart({ standings }: TeamPointsChartProps) {
             }}
             labelStyle={{ color: '#9CA3AF' }}
           />
-          <Bar dataKey="points" radius={[0, 4, 4, 0]}>
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={getBarColor(entry.rank)} />
-            ))}
-          </Bar>
-        </BarChart>
+          <Line
+            type="monotone"
+            dataKey="points"
+            stroke="#0A84FF"
+            strokeWidth={2}
+            dot={{ fill: '#0A84FF', strokeWidth: 2, r: 4 }}
+            activeDot={{ r: 6 }}
+          />
+          {/* Highlight top 3 with colored dots */}
+          {chartData.slice(0, 3).map((entry, index) => (
+            <ReferenceDot
+              key={`podium-${index}`}
+              x={entry.name}
+              y={entry.points}
+              r={8}
+              fill={RANK_COLORS[(index + 1) as keyof typeof RANK_COLORS]}
+              stroke="none"
+            />
+          ))}
+        </LineChart>
       </ResponsiveContainer>
     </div>
   )
