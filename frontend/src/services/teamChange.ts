@@ -1,4 +1,5 @@
 import api from './api'
+import { ParticipantRole } from './participant'
 
 export type TeamChangeRequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -7,6 +8,8 @@ export interface TeamChangeRequest {
   participant_id: string
   current_team_name?: string
   requested_team_name: string
+  current_roles?: ParticipantRole[]
+  requested_roles?: ParticipantRole[]
   status: TeamChangeRequestStatus
   reason?: string
   reviewed_by?: string
@@ -20,6 +23,7 @@ export interface TeamChangeRequest {
 
 export interface CreateTeamChangeRequest {
   requested_team_name: string
+  requested_roles?: ParticipantRole[]
   reason?: string
 }
 

@@ -7,10 +7,11 @@ interface MobileDrawerProps {
   onClose: () => void
   user: { nickname: string } | null
   isAuthenticated: boolean
+  isLoading: boolean
   onLogout: () => void
 }
 
-export default function MobileDrawer({ isOpen, onClose, user, isAuthenticated, onLogout }: MobileDrawerProps) {
+export default function MobileDrawer({ isOpen, onClose, user, isAuthenticated, isLoading, onLogout }: MobileDrawerProps) {
   const drawerRef = useFocusTrap<HTMLDivElement>(isOpen)
   useScrollLock(isOpen)
 
@@ -83,7 +84,11 @@ export default function MobileDrawer({ isOpen, onClose, user, isAuthenticated, o
         </nav>
 
         <div className="p-4 border-t border-steel">
-          {isAuthenticated && user ? (
+          {isLoading ? (
+            <div className="space-y-2">
+              <div className="h-12 bg-steel/30 rounded-lg animate-pulse" />
+            </div>
+          ) : isAuthenticated && user ? (
             <div className="space-y-2">
               <Link
                 to="/mypage"

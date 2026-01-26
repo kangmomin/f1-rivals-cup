@@ -5,7 +5,7 @@ import { useIsMobile } from '../../hooks'
 import MobileDrawer from './MobileDrawer'
 
 export default function Header() {
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
   const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -47,7 +47,9 @@ export default function Header() {
 
                 {/* Auth Section */}
                 <div className="flex items-center gap-3">
-                  {isAuthenticated && user ? (
+                  {isLoading ? (
+                    <div className="w-20 h-8 bg-steel/30 rounded animate-pulse" />
+                  ) : isAuthenticated && user ? (
                     <>
                       <Link
                         to="/mypage"
@@ -106,6 +108,7 @@ export default function Header() {
         onClose={() => setIsDrawerOpen(false)}
         user={user}
         isAuthenticated={isAuthenticated}
+        isLoading={isLoading}
         onLogout={handleLogout}
       />
     </>
