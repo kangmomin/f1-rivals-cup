@@ -107,9 +107,15 @@ export default function TeamChangeRequestPage() {
       })
       setMyRequests([newRequest, ...myRequests])
       setSelectedTeam('')
-      setSelectedRoles(participant?.roles || [])
       setReason('')
       setSubmitSuccess(true)
+
+      // Refresh participant data to get latest roles
+      const statusData = await participantService.getMyStatus(id)
+      if (statusData.participant) {
+        setParticipant(statusData.participant)
+        setSelectedRoles(statusData.participant.roles || [])
+      }
     } catch (err: any) {
       const message = err.response?.data?.message || '팀 변경 신청에 실패했습니다'
       setSubmitError(message)
