@@ -260,6 +260,21 @@ func (r *ParticipantRepository) CountPlayersByTeam(ctx context.Context, leagueID
 	return count, err
 }
 
+// CountPlayersByTeamExcluding counts approved players in a team, excluding a specific participant
+func (r *ParticipantRepository) CountPlayersByTeamExcluding(ctx context.Context, leagueID uuid.UUID, teamName string, excludeParticipantID uuid.UUID) (int, error) {
+	query := `
+		SELECT COUNT(*) FROM league_participants
+		WHERE league_id = $1
+		AND team_name = $2
+		AND status = 'approved'
+		AND 'player' = ANY(roles)
+		AND id != $3
+	`
+	var count int
+	err := r.db.Pool.QueryRowContext(ctx, query, leagueID, teamName, excludeParticipantID).Scan(&count)
+	return count, err
+}
+
 // UpdateTeam updates the team assignment of a participant
 func (r *ParticipantRepository) UpdateTeam(ctx context.Context, id uuid.UUID, teamName *string) error {
 	query := `

@@ -26,6 +26,7 @@ import NewsEditorPage from './pages/news/NewsEditorPage'
 import MatchDetailPage from './pages/matches/MatchDetailPage'
 import RoadmapPage from './pages/roadmap/RoadmapPage'
 import MyPage from './pages/mypage/MyPage'
+import TeamChangeRequestPage from './pages/leagues/TeamChangeRequestPage'
 
 function HomePage() {
   const [leagues, setLeagues] = React.useState<import('./services/league').League[]>([])
@@ -185,6 +186,7 @@ function MainLayout() {
           <Route path="/leagues/:id/standings" element={<StandingsPage />} />
           <Route path="/leagues/:leagueId/teams/:teamName/finance" element={<TeamFinancePage />} />
           <Route path="/leagues/:leagueId/my-finance" element={<ParticipantFinancePage />} />
+          <Route path="/leagues/:id/team-change" element={<TeamChangeRequestPage />} />
           <Route path="/leagues/:leagueId/news" element={<NewsListPage />} />
           <Route path="/leagues/:leagueId/news/new" element={<NewsEditorPage />} />
           <Route path="/news/:id" element={<NewsDetailPage />} />

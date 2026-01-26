@@ -51,6 +51,7 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
 	permissionHistoryRepo := repository.NewPermissionHistoryRepository(db)
 	leagueRepo := repository.NewLeagueRepository(db)
 	participantRepo := repository.NewParticipantRepository(db)
@@ -65,12 +66,18 @@ func main() {
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(cfg.JWTSecret, cfg.JWTAccessExpiry, cfg.JWTRefreshExpiry)
 
+	// Initialize token blacklist for access token revocation
+	tokenBlacklist := auth.NewTokenBlacklist()
+
 	// Initialize services
 	aiService := service.NewAIService(cfg.GeminiAPIKey)
 
+	// Initialize repositories for team change
+	teamChangeRepo := repository.NewTeamChangeRepository(db)
+
 	// Initialize handlers
 	healthHandler := handler.NewHealthHandler()
-	authHandler := handler.NewAuthHandler(userRepo, jwtService)
+	authHandler := handler.NewAuthHandlerWithBlacklist(userRepo, refreshTokenRepo, jwtService, tokenBlacklist)
 	adminHandler := handler.NewAdminHandler(userRepo, permissionHistoryRepo)
 	leagueHandler := handler.NewLeagueHandler(leagueRepo)
 	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo, accountRepo)
@@ -80,6 +87,7 @@ func main() {
 	newsHandler := handler.NewNewsHandler(newsRepo, leagueRepo, aiService)
 	commentHandler := handler.NewCommentHandler(commentRepo)
 	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
+	teamChangeHandler := handler.NewTeamChangeHandler(teamChangeRepo, participantRepo, teamRepo, leagueRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -108,17 +116,21 @@ func main() {
 
 	// Auth routes
 	authGroup := v1.Group("/auth")
-	authGroup.POST("/register", authHandler.Register)
-	authGroup.POST("/login", authHandler.Login)
+	authGroup.POST("/register", authHandler.Register, custommiddleware.AuthRateLimitByIP(custommiddleware.AuthRateLimiter))
+	authGroup.POST("/login", authHandler.Login, custommiddleware.AuthRateLimitByIP(custommiddleware.AuthRateLimiter))
 	authGroup.POST("/logout", authHandler.Logout)
-	authGroup.POST("/refresh", authHandler.RefreshToken)
-	authGroup.POST("/password-reset", authHandler.RequestPasswordReset)
-	authGroup.POST("/password-reset/confirm", authHandler.ConfirmPasswordReset)
-	authGroup.GET("/me", authHandler.GetMe, custommiddleware.AuthMiddleware(jwtService))
+	authGroup.POST("/refresh", authHandler.RefreshToken, custommiddleware.AuthRateLimitByIP(custommiddleware.AuthRateLimiter))
+	authGroup.POST("/password-reset", authHandler.RequestPasswordReset, custommiddleware.AuthRateLimitByIP(custommiddleware.AuthRateLimiter))
+	authGroup.POST("/password-reset/confirm", authHandler.ConfirmPasswordReset, custommiddleware.AuthRateLimitByIP(custommiddleware.AuthRateLimiter))
+	// Create auth middleware with blacklist support
+	authMiddleware := custommiddleware.AuthMiddlewareWithBlacklist(jwtService, tokenBlacklist)
+	optionalAuthMiddleware := custommiddleware.OptionalAuthMiddleware(jwtService)
+
+	authGroup.GET("/me", authHandler.GetMe, authMiddleware)
 
 	// Admin routes (protected - require STAFF or ADMIN role)
 	adminGroup := v1.Group("/admin")
-	adminGroup.Use(custommiddleware.AuthMiddleware(jwtService))
+	adminGroup.Use(authMiddleware)
 	adminGroup.Use(custommiddleware.RequireRole(auth.RoleStaff, auth.RoleAdmin))
 
 	// User management routes
@@ -160,6 +172,9 @@ func main() {
 	adminGroup.POST("/leagues/:id/teams", teamHandler.Create)
 	adminGroup.PUT("/teams/:id", teamHandler.Update)
 	adminGroup.DELETE("/teams/:id", teamHandler.Delete)
+
+	// Admin team change request routes
+	adminGroup.GET("/leagues/:id/team-change-requests", teamChangeHandler.ListByLeague)
 
 	// Admin news routes (protected with permissions)
 	// AI generate endpoint with rate limiting (30 req/min, burst 10) - disabled in dev
@@ -207,12 +222,12 @@ func main() {
 
 	// News comment routes (protected - create comment)
 	protectedNewsGroup := v1.Group("/news")
-	protectedNewsGroup.Use(custommiddleware.AuthMiddleware(jwtService))
+	protectedNewsGroup.Use(authMiddleware)
 	protectedNewsGroup.POST("/:id/comments", commentHandler.Create)
 
 	// Comment routes (protected - update/delete)
 	commentGroup := v1.Group("/comments")
-	commentGroup.Use(custommiddleware.AuthMiddleware(jwtService))
+	commentGroup.Use(authMiddleware)
 	commentGroup.PUT("/:id", commentHandler.Update)
 	commentGroup.DELETE("/:id", commentHandler.Delete)
 
@@ -222,19 +237,25 @@ func main() {
 	matchGroup.GET("/:id/results", matchResultHandler.List)
 
 	// League participation routes (protected)
-	leagueGroup.Use(custommiddleware.OptionalAuthMiddleware(jwtService))
+	leagueGroup.Use(optionalAuthMiddleware)
 	leagueGroup.GET("/:id/my-status", participantHandler.GetMyStatus)
 
 	protectedLeagueGroup := v1.Group("/leagues")
-	protectedLeagueGroup.Use(custommiddleware.AuthMiddleware(jwtService))
+	protectedLeagueGroup.Use(authMiddleware)
 	protectedLeagueGroup.POST("/:id/join", participantHandler.Join)
 	protectedLeagueGroup.DELETE("/:id/join", participantHandler.Cancel)
 	protectedLeagueGroup.POST("/:id/transactions", financeHandler.CreateTransactionByDirector)
 	protectedLeagueGroup.GET("/:id/my-account", financeHandler.GetMyAccount)
 
+	// Team change request routes (protected)
+	protectedLeagueGroup.POST("/:id/team-change-requests", teamChangeHandler.CreateRequest)
+	protectedLeagueGroup.GET("/:id/my-team-change-requests", teamChangeHandler.ListMyRequests)
+	protectedLeagueGroup.PUT("/:id/team-change-requests/:requestId", teamChangeHandler.ReviewRequest)
+	protectedLeagueGroup.DELETE("/:id/team-change-requests/:requestId", teamChangeHandler.CancelRequest)
+
 	// User profile routes (protected)
 	meGroup := v1.Group("/me")
-	meGroup.Use(custommiddleware.AuthMiddleware(jwtService))
+	meGroup.Use(authMiddleware)
 	meGroup.GET("/participations", participantHandler.ListMyParticipations)
 
 	// Initialize and start scheduler
@@ -261,6 +282,9 @@ func main() {
 	// Stop scheduler
 	cancel()
 	matchScheduler.Stop()
+
+	// Stop token blacklist background cleanup
+	tokenBlacklist.Stop()
 
 	// Graceful shutdown with timeout
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
