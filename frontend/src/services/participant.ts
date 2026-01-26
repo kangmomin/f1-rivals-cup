@@ -50,9 +50,16 @@ export const participantService = {
     return response.data
   },
 
+  // Admin endpoint - requires STAFF/ADMIN role
   async listByLeague(leagueId: string, status = ''): Promise<{ participants: LeagueParticipant[], total: number }> {
     const params = status ? `?status=${status}` : ''
     const response = await api.get<{ participants: LeagueParticipant[], total: number }>(`/admin/leagues/${leagueId}/participants${params}`)
+    return response.data
+  },
+
+  // Public endpoint - returns only approved participants
+  async listApprovedByLeague(leagueId: string): Promise<{ participants: LeagueParticipant[], total: number }> {
+    const response = await api.get<{ participants: LeagueParticipant[], total: number }>(`/leagues/${leagueId}/participants`)
     return response.data
   },
 

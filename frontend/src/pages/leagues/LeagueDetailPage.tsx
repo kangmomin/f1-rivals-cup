@@ -183,7 +183,8 @@ export default function LeagueDetailPage() {
 
       setIsLoadingMembers(true)
       try {
-        const data = await participantService.listByLeague(id, 'approved')
+        // Use public endpoint that returns only approved participants
+        const data = await participantService.listApprovedByLeague(id)
         setMembers(data.participants || [])
       } catch (err) {
         console.error('Failed to fetch members:', err)

@@ -284,6 +284,40 @@ func (h *ParticipantHandler) ListByLeague(c echo.Context) error {
 	})
 }
 
+// ListApprovedByLeague handles GET /api/v1/leagues/:id/participants (public endpoint)
+// Returns only approved participants for public viewing
+func (h *ParticipantHandler) ListApprovedByLeague(c echo.Context) error {
+	leagueIDStr := c.Param("id")
+	leagueID, err := uuid.Parse(leagueIDStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 리그 ID입니다",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	// Only return approved participants for public access
+	participants, err := h.participantRepo.ListByLeague(ctx, leagueID, string(model.ParticipantStatusApproved))
+	if err != nil {
+		slog.Error("Participant.ListApprovedByLeague: failed to list participants", "error", err, "league_id", leagueID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "참가자 목록을 불러오는데 실패했습니다",
+		})
+	}
+
+	if participants == nil {
+		participants = []*model.LeagueParticipant{}
+	}
+
+	return c.JSON(http.StatusOK, model.ListParticipantsResponse{
+		Participants: participants,
+		Total:        len(participants),
+	})
+}
+
 // ListMyParticipations handles GET /api/v1/me/participations
 func (h *ParticipantHandler) ListMyParticipations(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)
