@@ -8,6 +8,7 @@ import (
 	"github.com/f1-rivals-cup/backend/internal/database"
 	"github.com/f1-rivals-cup/backend/internal/model"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 var (
@@ -26,8 +27,8 @@ func NewTeamChangeRepository(db *database.DB) *TeamChangeRepository {
 // CreateRequest creates a new team change request
 func (r *TeamChangeRepository) CreateRequest(ctx context.Context, req *model.TeamChangeRequest) error {
 	query := `
-		INSERT INTO team_change_requests (participant_id, current_team_name, requested_team_name, status, reason)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO team_change_requests (participant_id, current_team_name, requested_team_name, current_roles, requested_roles, status, reason)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -35,6 +36,8 @@ func (r *TeamChangeRepository) CreateRequest(ctx context.Context, req *model.Tea
 		req.ParticipantID,
 		req.CurrentTeamName,
 		req.RequestedTeamName,
+		req.CurrentRoles,
+		req.RequestedRoles,
 		req.Status,
 		req.Reason,
 	).Scan(&req.ID, &req.CreatedAt, &req.UpdatedAt)
@@ -53,6 +56,7 @@ func (r *TeamChangeRepository) CreateRequest(ctx context.Context, req *model.Tea
 func (r *TeamChangeRepository) GetRequestByID(ctx context.Context, id uuid.UUID) (*model.TeamChangeRequest, error) {
 	query := `
 		SELECT tcr.id, tcr.participant_id, tcr.current_team_name, tcr.requested_team_name,
+		       tcr.current_roles, tcr.requested_roles,
 		       tcr.status, tcr.reason, tcr.reviewed_by, tcr.reviewed_at, tcr.created_at, tcr.updated_at,
 		       u.nickname as participant_name, lp.league_id, rev.nickname as reviewer_name
 		FROM team_change_requests tcr
@@ -68,6 +72,8 @@ func (r *TeamChangeRepository) GetRequestByID(ctx context.Context, id uuid.UUID)
 		&req.ParticipantID,
 		&req.CurrentTeamName,
 		&req.RequestedTeamName,
+		&req.CurrentRoles,
+		&req.RequestedRoles,
 		&req.Status,
 		&req.Reason,
 		&req.ReviewedBy,
@@ -93,6 +99,7 @@ func (r *TeamChangeRepository) GetRequestByID(ctx context.Context, id uuid.UUID)
 func (r *TeamChangeRepository) ListRequestsByLeague(ctx context.Context, leagueID uuid.UUID, status string) ([]*model.TeamChangeRequest, error) {
 	query := `
 		SELECT tcr.id, tcr.participant_id, tcr.current_team_name, tcr.requested_team_name,
+		       tcr.current_roles, tcr.requested_roles,
 		       tcr.status, tcr.reason, tcr.reviewed_by, tcr.reviewed_at, tcr.created_at, tcr.updated_at,
 		       u.nickname as participant_name, lp.league_id, rev.nickname as reviewer_name
 		FROM team_change_requests tcr
@@ -117,6 +124,8 @@ func (r *TeamChangeRepository) ListRequestsByLeague(ctx context.Context, leagueI
 			&req.ParticipantID,
 			&req.CurrentTeamName,
 			&req.RequestedTeamName,
+			&req.CurrentRoles,
+			&req.RequestedRoles,
 			&req.Status,
 			&req.Reason,
 			&req.ReviewedBy,
@@ -139,6 +148,7 @@ func (r *TeamChangeRepository) ListRequestsByLeague(ctx context.Context, leagueI
 func (r *TeamChangeRepository) ListRequestsByParticipant(ctx context.Context, participantID uuid.UUID) ([]*model.TeamChangeRequest, error) {
 	query := `
 		SELECT tcr.id, tcr.participant_id, tcr.current_team_name, tcr.requested_team_name,
+		       tcr.current_roles, tcr.requested_roles,
 		       tcr.status, tcr.reason, tcr.reviewed_by, tcr.reviewed_at, tcr.created_at, tcr.updated_at,
 		       u.nickname as participant_name, lp.league_id, rev.nickname as reviewer_name
 		FROM team_change_requests tcr
@@ -163,6 +173,8 @@ func (r *TeamChangeRepository) ListRequestsByParticipant(ctx context.Context, pa
 			&req.ParticipantID,
 			&req.CurrentTeamName,
 			&req.RequestedTeamName,
+			&req.CurrentRoles,
+			&req.RequestedRoles,
 			&req.Status,
 			&req.Reason,
 			&req.ReviewedBy,
@@ -185,6 +197,7 @@ func (r *TeamChangeRepository) ListRequestsByParticipant(ctx context.Context, pa
 func (r *TeamChangeRepository) GetPendingRequestByParticipant(ctx context.Context, participantID uuid.UUID) (*model.TeamChangeRequest, error) {
 	query := `
 		SELECT tcr.id, tcr.participant_id, tcr.current_team_name, tcr.requested_team_name,
+		       tcr.current_roles, tcr.requested_roles,
 		       tcr.status, tcr.reason, tcr.reviewed_by, tcr.reviewed_at, tcr.created_at, tcr.updated_at,
 		       u.nickname as participant_name, lp.league_id
 		FROM team_change_requests tcr
@@ -199,6 +212,8 @@ func (r *TeamChangeRepository) GetPendingRequestByParticipant(ctx context.Contex
 		&req.ParticipantID,
 		&req.CurrentTeamName,
 		&req.RequestedTeamName,
+		&req.CurrentRoles,
+		&req.RequestedRoles,
 		&req.Status,
 		&req.Reason,
 		&req.ReviewedBy,
@@ -264,7 +279,7 @@ func (r *TeamChangeRepository) DeleteRequest(ctx context.Context, id uuid.UUID) 
 }
 
 
-// ApproveTeamChange approves a team change request and updates participant's team_name
+// ApproveTeamChange approves a team change request and updates participant's team_name and roles
 func (r *TeamChangeRepository) ApproveTeamChange(ctx context.Context, requestID uuid.UUID, reviewedBy uuid.UUID) error {
 	tx, err := r.db.Pool.BeginTx(ctx, nil)
 	if err != nil {
@@ -272,14 +287,15 @@ func (r *TeamChangeRepository) ApproveTeamChange(ctx context.Context, requestID 
 	}
 	defer tx.Rollback()
 
-	// Get the request details
+	// Get the request details including requested_roles
 	var participantID uuid.UUID
 	var requestedTeamName string
+	var requestedRoles pq.StringArray
 	err = tx.QueryRowContext(ctx, `
-		SELECT participant_id, requested_team_name
+		SELECT participant_id, requested_team_name, requested_roles
 		FROM team_change_requests
 		WHERE id = $1 AND status = 'pending'
-	`, requestID).Scan(&participantID, &requestedTeamName)
+	`, requestID).Scan(&participantID, &requestedTeamName, &requestedRoles)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrTeamChangeRequestNotFound
@@ -287,12 +303,20 @@ func (r *TeamChangeRepository) ApproveTeamChange(ctx context.Context, requestID 
 		return err
 	}
 
-	// Update participant's team_name
-	_, err = tx.ExecContext(ctx, `
-		UPDATE league_participants
-		SET team_name = $1, updated_at = NOW()
-		WHERE id = $2
-	`, requestedTeamName, participantID)
+	// Update participant's team_name and roles (if requested_roles is provided)
+	if len(requestedRoles) > 0 {
+		_, err = tx.ExecContext(ctx, `
+			UPDATE league_participants
+			SET team_name = $1, roles = $2, updated_at = NOW()
+			WHERE id = $3
+		`, requestedTeamName, requestedRoles, participantID)
+	} else {
+		_, err = tx.ExecContext(ctx, `
+			UPDATE league_participants
+			SET team_name = $1, updated_at = NOW()
+			WHERE id = $2
+		`, requestedTeamName, participantID)
+	}
 	if err != nil {
 		return err
 	}

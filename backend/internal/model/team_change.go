@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // TeamChangeRequestStatus represents the status of a team change request
@@ -21,6 +22,8 @@ type TeamChangeRequest struct {
 	ParticipantID     uuid.UUID               `json:"participant_id"`
 	CurrentTeamName   *string                 `json:"current_team_name,omitempty"`
 	RequestedTeamName string                  `json:"requested_team_name"`
+	CurrentRoles      pq.StringArray          `json:"current_roles,omitempty"`
+	RequestedRoles    pq.StringArray          `json:"requested_roles,omitempty"`
 	Status            TeamChangeRequestStatus `json:"status"`
 	Reason            *string                 `json:"reason,omitempty"`
 	ReviewedBy        *uuid.UUID              `json:"reviewed_by,omitempty"`
@@ -47,8 +50,9 @@ type ParticipantTeamHistory struct {
 
 // CreateTeamChangeRequest represents a request to create a team change request
 type CreateTeamChangeRequest struct {
-	RequestedTeamName string  `json:"requested_team_name" validate:"required,max=100"`
-	Reason            *string `json:"reason,omitempty"`
+	RequestedTeamName string   `json:"requested_team_name" validate:"required,max=100"`
+	RequestedRoles    []string `json:"requested_roles,omitempty"`
+	Reason            *string  `json:"reason,omitempty"`
 }
 
 // ReviewTeamChangeRequest represents a request to review (approve/reject) a team change request
