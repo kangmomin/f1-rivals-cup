@@ -6,32 +6,24 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceDot,
+  Legend,
 } from 'recharts'
-import { StandingsEntry } from '../../services/standings'
+
+export interface RacePointsData {
+  race: string
+  [driverName: string]: string | number
+}
 
 interface DriverPointsChartProps {
-  standings: StandingsEntry[]
-  maxDrivers?: number
+  raceData: RacePointsData[]
+  drivers: { name: string; color: string }[]
 }
 
-const RANK_COLORS = {
-  1: '#EAB308', // gold
-  2: '#9CA3AF', // silver
-  3: '#B45309', // bronze
-}
-
-export default function DriverPointsChart({ standings, maxDrivers = 10 }: DriverPointsChartProps) {
-  const chartData = standings.slice(0, maxDrivers).map((entry) => ({
-    name: entry.driver_name,
-    points: entry.total_points,
-    rank: entry.rank,
-  }))
-
-  if (chartData.length === 0) {
+export default function DriverPointsChart({ raceData, drivers }: DriverPointsChartProps) {
+  if (raceData.length === 0 || drivers.length === 0) {
     return (
       <div className="h-64 flex items-center justify-center">
-        <p className="text-text-secondary">드라이버 순위 데이터가 없습니다</p>
+        <p className="text-text-secondary">경기 데이터가 없습니다</p>
       </div>
     )
   }
@@ -40,18 +32,14 @@ export default function DriverPointsChart({ standings, maxDrivers = 10 }: Driver
     <div className="h-64 md:h-80">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
-          data={chartData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          data={raceData}
+          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
           <XAxis
-            dataKey="name"
+            dataKey="race"
             tick={{ fill: '#9CA3AF', fontSize: 11 }}
             axisLine={{ stroke: '#374151' }}
-            angle={-45}
-            textAnchor="end"
-            height={60}
-            interval={0}
           />
           <YAxis
             tick={{ fill: '#9CA3AF', fontSize: 12 }}
@@ -65,26 +53,19 @@ export default function DriverPointsChart({ standings, maxDrivers = 10 }: Driver
               borderRadius: '8px',
               color: '#fff',
             }}
-            formatter={(value) => [`${value} pts`, '포인트']}
+            formatter={(value) => [`${value} pts`, '']}
             labelStyle={{ color: '#9CA3AF' }}
           />
-          <Line
-            type="monotone"
-            dataKey="points"
-            stroke="#0A84FF"
-            strokeWidth={2}
-            dot={{ fill: '#0A84FF', strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          {/* Highlight top 3 with colored dots */}
-          {chartData.slice(0, 3).map((entry, index) => (
-            <ReferenceDot
-              key={`podium-${index}`}
-              x={entry.name}
-              y={entry.points}
-              r={8}
-              fill={RANK_COLORS[(index + 1) as keyof typeof RANK_COLORS]}
-              stroke="none"
+          <Legend wrapperStyle={{ color: '#9CA3AF', fontSize: 11 }} />
+          {drivers.map((driver) => (
+            <Line
+              key={driver.name}
+              type="monotone"
+              dataKey={driver.name}
+              stroke={driver.color}
+              strokeWidth={2}
+              dot={{ fill: driver.color, strokeWidth: 2, r: 3 }}
+              activeDot={{ r: 5 }}
             />
           ))}
         </LineChart>
