@@ -33,14 +33,14 @@ const roadmapItems: RoadmapItem[] = [
     id: '4',
     title: '자금 흐름 관리',
     description: '리그 내 자금 흐름을 추적하고 관리하는 기능. 상금, 이적료, 스폰서 수입 등 기록',
-    status: 'in_progress',
+    status: 'completed',
     quarter: '2026 Q1',
   },
   {
     id: '5',
     title: '팀/선수/감독 자금 및 순위',
     description: '팀, 선수, 감독별 보유 자금 현황과 순위를 한눈에 확인할 수 있는 대시보드',
-    status: 'planned',
+    status: 'completed',
     quarter: '2026 Q2',
   },
   {
