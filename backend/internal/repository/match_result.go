@@ -196,7 +196,7 @@ func (r *MatchResultRepository) GetLeagueStandings(ctx context.Context, leagueID
 		LEFT JOIN matches m ON mr.match_id = m.id AND m.league_id = $1
 		WHERE lp.league_id = $1
 		  AND lp.status = 'approved'
-		  AND 'player' = ANY(lp.roles)
+		  AND (lp.roles && ARRAY['player','reserve'])
 		GROUP BY lp.id, lp.user_id, u.nickname, lp.team_name
 		ORDER BY total_points DESC, wins DESC, podiums DESC, fastest_laps DESC
 	`
@@ -253,7 +253,7 @@ func (r *MatchResultRepository) GetTeamStandings(ctx context.Context, leagueID u
 		JOIN league_participants lp ON mr.participant_id = lp.id
 		WHERE m.league_id = $1
 		  AND lp.status = 'approved'
-		  AND 'player' = ANY(lp.roles)
+		  AND (lp.roles && ARRAY['player','reserve'])
 		  AND mr.team_name IS NOT NULL
 		  AND mr.team_name != ''
 		GROUP BY mr.team_name
