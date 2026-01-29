@@ -47,7 +47,7 @@ const roadmapItems: RoadmapItem[] = [
     id: '6',
     title: '자금 통계 및 분석',
     description: '시즌별, 팀별, 선수별 자금 흐름 통계와 그래프를 통한 시각화 분석 기능',
-    status: 'planned',
+    status: 'completed',
     quarter: '2026 Q2',
   },
   {
@@ -61,7 +61,7 @@ const roadmapItems: RoadmapItem[] = [
     id: '8',
     title: '실시간 텔레메트리',
     description: '텔레메트리 송수신 프로그램을 통해 선수들의 주행 데이터를 실시간으로 확인할 수 있는 기능',
-    status: 'planned',
+    status: 'in_progress',
     quarter: '2026 Q3',
   },
   {
