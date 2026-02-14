@@ -422,25 +422,25 @@ func (h *FinanceHandler) ListAccountTransactions(c echo.Context) error {
 		transactions = []*model.Transaction{}
 	}
 
-	// Get weekly flow for this account
-	weeklyFlow, err := h.transactionRepo.GetAccountWeeklyFlow(ctx, id)
+	// Get race flow for this account
+	raceFlow, err := h.transactionRepo.GetAccountRaceFlow(ctx, id)
 	if err != nil {
-		slog.Error("Finance.ListAccountTransactions: failed to get weekly flow", "error", err, "account_id", id)
+		slog.Error("Finance.ListAccountTransactions: failed to get race flow", "error", err, "account_id", id)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
-			Message: "주별 통계를 불러오는데 실패했습니다",
+			Message: "레이스별 통계를 불러오는데 실패했습니다",
 		})
 	}
 
-	if weeklyFlow == nil {
-		weeklyFlow = []model.WeeklyFlow{}
+	if raceFlow == nil {
+		raceFlow = []model.RaceFlow{}
 	}
 
 	return c.JSON(http.StatusOK, model.AccountTransactionsResponse{
 		Transactions: transactions,
 		Total:        len(transactions),
 		Balance:      account.Balance,
-		WeeklyFlow:   weeklyFlow,
+		RaceFlow:     raceFlow,
 	})
 }
 
@@ -482,13 +482,13 @@ func (h *FinanceHandler) GetFinanceStats(c echo.Context) error {
 		})
 	}
 
-	// Get team weekly flows
-	teamWeeklyFlows, err := h.transactionRepo.GetTeamWeeklyFlows(ctx, leagueID)
+	// Get team race flows
+	teamRaceFlows, err := h.transactionRepo.GetTeamRaceFlows(ctx, leagueID)
 	if err != nil {
-		slog.Error("Finance.GetFinanceStats: failed to get team weekly flows", "error", err, "league_id", leagueID)
+		slog.Error("Finance.GetFinanceStats: failed to get team race flows", "error", err, "league_id", leagueID)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			Error:   "server_error",
-			Message: "팀별 주별 통계를 불러오는데 실패했습니다",
+			Message: "팀별 레이스 통계를 불러오는데 실패했습니다",
 		})
 	}
 
@@ -496,16 +496,16 @@ func (h *FinanceHandler) GetFinanceStats(c echo.Context) error {
 	if stats.TeamBalances == nil {
 		stats.TeamBalances = []model.TeamBalance{}
 	}
-	if stats.WeeklyFlow == nil {
-		stats.WeeklyFlow = []model.WeeklyFlow{}
+	if stats.RaceFlow == nil {
+		stats.RaceFlow = []model.RaceFlow{}
 	}
 	if stats.CategoryTotals == nil {
 		stats.CategoryTotals = make(map[string]int64)
 	}
-	if teamWeeklyFlows == nil {
-		teamWeeklyFlows = []model.TeamWeeklyFlow{}
+	if teamRaceFlows == nil {
+		teamRaceFlows = []model.TeamRaceFlow{}
 	}
-	stats.TeamWeeklyFlows = teamWeeklyFlows
+	stats.TeamRaceFlows = teamRaceFlows
 
 	return c.JSON(http.StatusOK, stats)
 }

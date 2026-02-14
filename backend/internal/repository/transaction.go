@@ -204,18 +204,27 @@ func (r *TransactionRepository) ListByAccount(ctx context.Context, accountID uui
 	return transactions, nil
 }
 
-// GetAccountWeeklyFlow retrieves weekly income/expense flow for a specific account (last 12 weeks)
-func (r *TransactionRepository) GetAccountWeeklyFlow(ctx context.Context, accountID uuid.UUID) ([]model.WeeklyFlow, error) {
+// GetAccountRaceFlow retrieves income/expense flow per race for a specific account
+func (r *TransactionRepository) GetAccountRaceFlow(ctx context.Context, accountID uuid.UUID) ([]model.RaceFlow, error) {
 	query := `
+		WITH tx_with_race AS (
+			SELECT t.*,
+				(SELECT m.round FROM matches m
+				 WHERE m.league_id = t.league_id
+				   AND m.status = 'completed'
+				   AND m.match_date <= t.created_at::date
+				 ORDER BY m.match_date DESC LIMIT 1) as race_round
+			FROM transactions t
+			WHERE (t.from_account_id = $1 OR t.to_account_id = $1)
+		)
 		SELECT
-			TO_CHAR(t.created_at, 'IYYY-IW') as week,
-			COALESCE(SUM(CASE WHEN t.to_account_id = $1 THEN t.amount ELSE 0 END), 0) as income,
-			COALESCE(SUM(CASE WHEN t.from_account_id = $1 THEN t.amount ELSE 0 END), 0) as expense
-		FROM transactions t
-		WHERE (t.from_account_id = $1 OR t.to_account_id = $1)
-		  AND t.created_at >= NOW() - INTERVAL '12 weeks'
-		GROUP BY TO_CHAR(t.created_at, 'IYYY-IW')
-		ORDER BY week
+			'R' || race_round as race,
+			COALESCE(SUM(CASE WHEN to_account_id = $1 THEN amount ELSE 0 END), 0) as income,
+			COALESCE(SUM(CASE WHEN from_account_id = $1 THEN amount ELSE 0 END), 0) as expense
+		FROM tx_with_race
+		WHERE race_round IS NOT NULL
+		GROUP BY race_round
+		ORDER BY race_round
 	`
 
 	rows, err := r.db.Pool.QueryContext(ctx, query, accountID)
@@ -224,20 +233,20 @@ func (r *TransactionRepository) GetAccountWeeklyFlow(ctx context.Context, accoun
 	}
 	defer rows.Close()
 
-	var weeklyFlow []model.WeeklyFlow
+	var raceFlow []model.RaceFlow
 	for rows.Next() {
-		var wf model.WeeklyFlow
-		if err := rows.Scan(&wf.Week, &wf.Income, &wf.Expense); err != nil {
+		var rf model.RaceFlow
+		if err := rows.Scan(&rf.Race, &rf.Income, &rf.Expense); err != nil {
 			return nil, err
 		}
-		weeklyFlow = append(weeklyFlow, wf)
+		raceFlow = append(raceFlow, rf)
 	}
 
-	return weeklyFlow, nil
+	return raceFlow, nil
 }
 
-// GetTeamWeeklyFlows retrieves weekly income/expense flow for all teams in a league (last 12 weeks)
-func (r *TransactionRepository) GetTeamWeeklyFlows(ctx context.Context, leagueID uuid.UUID) ([]model.TeamWeeklyFlow, error) {
+// GetTeamRaceFlows retrieves income/expense flow per race for all teams in a league
+func (r *TransactionRepository) GetTeamRaceFlows(ctx context.Context, leagueID uuid.UUID) ([]model.TeamRaceFlow, error) {
 	// Get all team accounts with team info
 	teamAccountQuery := `
 		SELECT a.id, a.owner_id, t.name, COALESCE(t.color, '#3B82F6') as color
@@ -268,17 +277,17 @@ func (r *TransactionRepository) GetTeamWeeklyFlows(ctx context.Context, leagueID
 		teamAccounts = append(teamAccounts, ta)
 	}
 
-	// For each team, get weekly flows
-	var result []model.TeamWeeklyFlow
+	// For each team, get race flows
+	var result []model.TeamRaceFlow
 	for _, ta := range teamAccounts {
-		flows, err := r.GetAccountWeeklyFlow(ctx, ta.AccountID)
+		flows, err := r.GetAccountRaceFlow(ctx, ta.AccountID)
 		if err != nil {
 			return nil, err
 		}
 		if flows == nil {
-			flows = []model.WeeklyFlow{}
+			flows = []model.RaceFlow{}
 		}
-		result = append(result, model.TeamWeeklyFlow{
+		result = append(result, model.TeamRaceFlow{
 			TeamID:    ta.TeamID,
 			TeamName:  ta.TeamName,
 			TeamColor: ta.TeamColor,
@@ -345,32 +354,43 @@ func (r *TransactionRepository) GetFinanceStats(ctx context.Context, leagueID uu
 		stats.CategoryTotals[category] = total
 	}
 
-	// Get weekly flow (last 12 weeks)
-	weeklyQuery := `
+	// Get race flow (grouped by match round)
+	raceQuery := `
+		WITH tx_with_race AS (
+			SELECT t.*,
+				(SELECT m.round FROM matches m
+				 WHERE m.league_id = t.league_id
+				   AND m.status = 'completed'
+				   AND m.match_date <= t.created_at::date
+				 ORDER BY m.match_date DESC LIMIT 1) as race_round
+			FROM transactions t
+			JOIN accounts fa ON t.from_account_id = fa.id
+			JOIN accounts ta ON t.to_account_id = ta.id
+			WHERE t.league_id = $1
+		)
 		SELECT
-			TO_CHAR(t.created_at, 'IYYY-IW') as week,
-			COALESCE(SUM(CASE WHEN fa.owner_type = 'system' THEN t.amount ELSE 0 END), 0) as income,
-			COALESCE(SUM(CASE WHEN ta.owner_type = 'system' THEN t.amount ELSE 0 END), 0) as expense
-		FROM transactions t
-		JOIN accounts fa ON t.from_account_id = fa.id
-		JOIN accounts ta ON t.to_account_id = ta.id
-		WHERE t.league_id = $1
-		  AND t.created_at >= NOW() - INTERVAL '12 weeks'
-		GROUP BY TO_CHAR(t.created_at, 'IYYY-IW')
-		ORDER BY week
+			'R' || race_round as race,
+			COALESCE(SUM(CASE WHEN fa.owner_type = 'system' THEN tr.amount ELSE 0 END), 0) as income,
+			COALESCE(SUM(CASE WHEN ta.owner_type = 'system' THEN tr.amount ELSE 0 END), 0) as expense
+		FROM tx_with_race tr
+		JOIN accounts fa ON tr.from_account_id = fa.id
+		JOIN accounts ta ON tr.to_account_id = ta.id
+		WHERE tr.race_round IS NOT NULL
+		GROUP BY tr.race_round
+		ORDER BY tr.race_round
 	`
-	weekRows, err := r.db.Pool.QueryContext(ctx, weeklyQuery, leagueID)
+	raceRows, err := r.db.Pool.QueryContext(ctx, raceQuery, leagueID)
 	if err != nil {
 		return nil, err
 	}
-	defer weekRows.Close()
+	defer raceRows.Close()
 
-	for weekRows.Next() {
-		var wf model.WeeklyFlow
-		if err := weekRows.Scan(&wf.Week, &wf.Income, &wf.Expense); err != nil {
+	for raceRows.Next() {
+		var rf model.RaceFlow
+		if err := raceRows.Scan(&rf.Race, &rf.Income, &rf.Expense); err != nil {
 			return nil, err
 		}
-		stats.WeeklyFlow = append(stats.WeeklyFlow, wf)
+		stats.RaceFlow = append(stats.RaceFlow, rf)
 	}
 
 	return stats, nil
