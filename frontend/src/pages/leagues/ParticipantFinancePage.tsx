@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { financeService, Account, Transaction, WeeklyFlow } from '../../services/finance'
+import { financeService, Account, Transaction, RaceFlow } from '../../services/finance'
 import { useAuth } from '../../contexts/AuthContext'
 import TransactionHistory from '../../components/finance/TransactionHistory'
 import TransactionForm from '../../components/finance/TransactionForm'
@@ -13,7 +13,7 @@ export default function ParticipantFinancePage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [allAccounts, setAllAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [weeklyFlow, setWeeklyFlow] = useState<WeeklyFlow[]>([])
+  const [raceFlow, setRaceFlow] = useState<RaceFlow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showTransactionForm, setShowTransactionForm] = useState(false)
@@ -37,7 +37,7 @@ export default function ParticipantFinancePage() {
 
       setAllAccounts(accountsRes.accounts)
       setTransactions(txRes.transactions)
-      setWeeklyFlow(txRes.weekly_flow || [])
+      setRaceFlow(txRes.race_flow || [])
     } catch (err: any) {
       console.error('Failed to fetch participant finance data:', err)
       if (err.response?.status === 403) {
@@ -153,7 +153,7 @@ export default function ParticipantFinancePage() {
 
         {/* Weekly Flow Chart - 해당 참가자의 주별 수입/지출 */}
         <div className="mb-8">
-          <FinanceChart accountWeeklyFlow={weeklyFlow} showTeamBalances={false} />
+          <FinanceChart accountRaceFlow={raceFlow} showTeamBalances={false} />
         </div>
 
         {/* Transaction History */}

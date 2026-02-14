@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { teamService, Team } from '../../services/team'
-import { financeService, Account, Transaction, WeeklyFlow } from '../../services/finance'
+import { financeService, Account, Transaction, RaceFlow } from '../../services/finance'
 import { matchService, Match, MatchResult } from '../../services/match'
 import { standingsService, StandingsEntry, TeamStandingsEntry } from '../../services/standings'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
@@ -31,7 +31,7 @@ export default function UserTeamDetailPage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [allAccounts, setAllAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [weeklyFlow, setWeeklyFlow] = useState<WeeklyFlow[]>([])
+  const [raceFlow, setRaceFlow] = useState<RaceFlow[]>([])
   const [isDirector, setIsDirector] = useState(false)
   const [showTransactionForm, setShowTransactionForm] = useState(false)
   const [isLoadingFinance, setIsLoadingFinance] = useState(false)
@@ -85,7 +85,7 @@ export default function UserTeamDetailPage() {
         setAccount(teamAccount)
         const txRes = await financeService.getAccountTransactions(teamAccount.id)
         setTransactions(txRes.transactions)
-        setWeeklyFlow(txRes.weekly_flow || [])
+        setRaceFlow(txRes.race_flow || [])
       }
 
       if (isAuthenticated) {
@@ -309,7 +309,7 @@ export default function UserTeamDetailPage() {
                   </div>
 
                   {/* Weekly Flow Chart */}
-                  <FinanceChart accountWeeklyFlow={weeklyFlow} showTeamBalances={false} />
+                  <FinanceChart accountRaceFlow={raceFlow} showTeamBalances={false} />
 
                   {/* Transaction History */}
                   <div className="bg-carbon-dark border border-steel rounded-xl p-5">
