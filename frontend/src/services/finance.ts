@@ -42,25 +42,25 @@ export interface TeamBalance {
   balance: number
 }
 
-export interface RaceFlow {
-  race: string // 'R1', 'R2', etc.
+export interface DailyFlow {
+  date: string // 'MM/DD' 형식
   income: number
   expense: number
 }
 
-export interface TeamRaceFlow {
+export interface TeamDailyFlow {
   team_id: string
   team_name: string
   team_color: string
-  flows: RaceFlow[]
+  flows: DailyFlow[]
 }
 
 export interface FinanceStats {
   total_circulation: number
   team_balances: TeamBalance[]
   category_totals: Record<string, number>
-  race_flow: RaceFlow[]
-  team_race_flows: TeamRaceFlow[]
+  daily_flow: DailyFlow[]
+  team_daily_flows: TeamDailyFlow[]
 }
 
 export const financeService = {
@@ -123,7 +123,7 @@ export const financeService = {
       transactions: Transaction[]
       total: number
       balance: number
-      race_flow: RaceFlow[]
+      daily_flow: DailyFlow[]
     }>(
       `/accounts/${accountId}/transactions`, { params }
     )

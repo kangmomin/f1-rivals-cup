@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { teamService, Team } from '../../services/team'
-import { financeService, Account, Transaction, RaceFlow } from '../../services/finance'
+import { financeService, Account, Transaction, DailyFlow } from '../../services/finance'
 import { participantService } from '../../services/participant'
 import { useAuth } from '../../contexts/AuthContext'
 import TransactionHistory from '../../components/finance/TransactionHistory'
@@ -17,7 +17,7 @@ export default function TeamFinancePage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [allAccounts, setAllAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [raceFlow, setRaceFlow] = useState<RaceFlow[]>([])
+  const [dailyFlow, setDailyFlow] = useState<DailyFlow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDirector, setIsDirector] = useState(false)
@@ -50,7 +50,7 @@ export default function TeamFinancePage() {
         // Fetch account transactions with weekly flow
         const txRes = await financeService.getAccountTransactions(teamAccount.id)
         setTransactions(txRes.transactions)
-        setRaceFlow(txRes.race_flow || [])
+        setDailyFlow(txRes.daily_flow || [])
       }
 
       // Check if user is director of this team
@@ -160,7 +160,7 @@ export default function TeamFinancePage() {
 
         {/* Weekly Flow Chart - 해당 팀의 주별 수입/지출 */}
         <div className="mb-8">
-          <FinanceChart accountRaceFlow={raceFlow} showTeamBalances={false} />
+          <FinanceChart accountDailyFlow={dailyFlow} showTeamBalances={false} />
         </div>
 
         {/* Transaction History */}

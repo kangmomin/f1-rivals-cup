@@ -204,27 +204,18 @@ func (r *TransactionRepository) ListByAccount(ctx context.Context, accountID uui
 	return transactions, nil
 }
 
-// GetAccountRaceFlow retrieves income/expense flow per race for a specific account
-func (r *TransactionRepository) GetAccountRaceFlow(ctx context.Context, accountID uuid.UUID) ([]model.RaceFlow, error) {
+// GetAccountDailyFlow retrieves income/expense flow per day for a specific account (last 30 days)
+func (r *TransactionRepository) GetAccountDailyFlow(ctx context.Context, accountID uuid.UUID) ([]model.DailyFlow, error) {
 	query := `
-		WITH tx_with_race AS (
-			SELECT t.*,
-				(SELECT m.round FROM matches m
-				 WHERE m.league_id = t.league_id
-				   AND m.status = 'completed'
-				   AND m.match_date <= t.created_at::date
-				 ORDER BY m.match_date DESC LIMIT 1) as race_round
-			FROM transactions t
-			WHERE (t.from_account_id = $1 OR t.to_account_id = $1)
-		)
 		SELECT
-			'R' || race_round as race,
-			COALESCE(SUM(CASE WHEN to_account_id = $1 THEN amount ELSE 0 END), 0) as income,
-			COALESCE(SUM(CASE WHEN from_account_id = $1 THEN amount ELSE 0 END), 0) as expense
-		FROM tx_with_race
-		WHERE race_round IS NOT NULL
-		GROUP BY race_round
-		ORDER BY race_round
+			TO_CHAR(t.created_at, 'MM/DD') as date,
+			COALESCE(SUM(CASE WHEN t.to_account_id = $1 THEN t.amount ELSE 0 END), 0) as income,
+			COALESCE(SUM(CASE WHEN t.from_account_id = $1 THEN t.amount ELSE 0 END), 0) as expense
+		FROM transactions t
+		WHERE (t.from_account_id = $1 OR t.to_account_id = $1)
+		  AND t.created_at >= NOW() - INTERVAL '30 days'
+		GROUP BY t.created_at::date, TO_CHAR(t.created_at, 'MM/DD')
+		ORDER BY t.created_at::date
 	`
 
 	rows, err := r.db.Pool.QueryContext(ctx, query, accountID)
@@ -233,20 +224,20 @@ func (r *TransactionRepository) GetAccountRaceFlow(ctx context.Context, accountI
 	}
 	defer rows.Close()
 
-	var raceFlow []model.RaceFlow
+	var dailyFlow []model.DailyFlow
 	for rows.Next() {
-		var rf model.RaceFlow
-		if err := rows.Scan(&rf.Race, &rf.Income, &rf.Expense); err != nil {
+		var df model.DailyFlow
+		if err := rows.Scan(&df.Date, &df.Income, &df.Expense); err != nil {
 			return nil, err
 		}
-		raceFlow = append(raceFlow, rf)
+		dailyFlow = append(dailyFlow, df)
 	}
 
-	return raceFlow, nil
+	return dailyFlow, nil
 }
 
-// GetTeamRaceFlows retrieves income/expense flow per race for all teams in a league
-func (r *TransactionRepository) GetTeamRaceFlows(ctx context.Context, leagueID uuid.UUID) ([]model.TeamRaceFlow, error) {
+// GetTeamDailyFlows retrieves income/expense flow per day for all teams in a league (last 30 days)
+func (r *TransactionRepository) GetTeamDailyFlows(ctx context.Context, leagueID uuid.UUID) ([]model.TeamDailyFlow, error) {
 	// Get all team accounts with team info
 	teamAccountQuery := `
 		SELECT a.id, a.owner_id, t.name, COALESCE(t.color, '#3B82F6') as color
@@ -277,17 +268,17 @@ func (r *TransactionRepository) GetTeamRaceFlows(ctx context.Context, leagueID u
 		teamAccounts = append(teamAccounts, ta)
 	}
 
-	// For each team, get race flows
-	var result []model.TeamRaceFlow
+	// For each team, get daily flows
+	var result []model.TeamDailyFlow
 	for _, ta := range teamAccounts {
-		flows, err := r.GetAccountRaceFlow(ctx, ta.AccountID)
+		flows, err := r.GetAccountDailyFlow(ctx, ta.AccountID)
 		if err != nil {
 			return nil, err
 		}
 		if flows == nil {
-			flows = []model.RaceFlow{}
+			flows = []model.DailyFlow{}
 		}
-		result = append(result, model.TeamRaceFlow{
+		result = append(result, model.TeamDailyFlow{
 			TeamID:    ta.TeamID,
 			TeamName:  ta.TeamName,
 			TeamColor: ta.TeamColor,
@@ -354,43 +345,32 @@ func (r *TransactionRepository) GetFinanceStats(ctx context.Context, leagueID uu
 		stats.CategoryTotals[category] = total
 	}
 
-	// Get race flow (grouped by match round)
-	raceQuery := `
-		WITH tx_with_race AS (
-			SELECT t.*,
-				(SELECT m.round FROM matches m
-				 WHERE m.league_id = t.league_id
-				   AND m.status = 'completed'
-				   AND m.match_date <= t.created_at::date
-				 ORDER BY m.match_date DESC LIMIT 1) as race_round
-			FROM transactions t
-			JOIN accounts fa ON t.from_account_id = fa.id
-			JOIN accounts ta ON t.to_account_id = ta.id
-			WHERE t.league_id = $1
-		)
+	// Get daily flow (last 30 days)
+	dailyQuery := `
 		SELECT
-			'R' || race_round as race,
-			COALESCE(SUM(CASE WHEN fa.owner_type = 'system' THEN tr.amount ELSE 0 END), 0) as income,
-			COALESCE(SUM(CASE WHEN ta.owner_type = 'system' THEN tr.amount ELSE 0 END), 0) as expense
-		FROM tx_with_race tr
-		JOIN accounts fa ON tr.from_account_id = fa.id
-		JOIN accounts ta ON tr.to_account_id = ta.id
-		WHERE tr.race_round IS NOT NULL
-		GROUP BY tr.race_round
-		ORDER BY tr.race_round
+			TO_CHAR(t.created_at, 'MM/DD') as date,
+			COALESCE(SUM(CASE WHEN fa.owner_type = 'system' THEN t.amount ELSE 0 END), 0) as income,
+			COALESCE(SUM(CASE WHEN ta.owner_type = 'system' THEN t.amount ELSE 0 END), 0) as expense
+		FROM transactions t
+		JOIN accounts fa ON t.from_account_id = fa.id
+		JOIN accounts ta ON t.to_account_id = ta.id
+		WHERE t.league_id = $1
+		  AND t.created_at >= NOW() - INTERVAL '30 days'
+		GROUP BY t.created_at::date, TO_CHAR(t.created_at, 'MM/DD')
+		ORDER BY t.created_at::date
 	`
-	raceRows, err := r.db.Pool.QueryContext(ctx, raceQuery, leagueID)
+	dailyRows, err := r.db.Pool.QueryContext(ctx, dailyQuery, leagueID)
 	if err != nil {
 		return nil, err
 	}
-	defer raceRows.Close()
+	defer dailyRows.Close()
 
-	for raceRows.Next() {
-		var rf model.RaceFlow
-		if err := raceRows.Scan(&rf.Race, &rf.Income, &rf.Expense); err != nil {
+	for dailyRows.Next() {
+		var df model.DailyFlow
+		if err := dailyRows.Scan(&df.Date, &df.Income, &df.Expense); err != nil {
 			return nil, err
 		}
-		stats.RaceFlow = append(stats.RaceFlow, rf)
+		stats.DailyFlow = append(stats.DailyFlow, df)
 	}
 
 	return stats, nil

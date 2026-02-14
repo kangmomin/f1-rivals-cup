@@ -52,7 +52,7 @@ type AccountTransactionsResponse struct {
 	Transactions []*Transaction `json:"transactions"`
 	Total        int            `json:"total"`
 	Balance      int64          `json:"balance"`
-	RaceFlow     []RaceFlow     `json:"race_flow"`
+	DailyFlow    []DailyFlow    `json:"daily_flow"`
 }
 
 // Finance stats for graphs
@@ -62,23 +62,23 @@ type TeamBalance struct {
 	Balance  int64     `json:"balance"`
 }
 
-type RaceFlow struct {
-	Race    string `json:"race"` // 'R1', 'R2', etc.
+type DailyFlow struct {
+	Date    string `json:"date"` // 'MM/DD' 형식
 	Income  int64  `json:"income"`
 	Expense int64  `json:"expense"`
 }
 
-type TeamRaceFlow struct {
-	TeamID    uuid.UUID  `json:"team_id"`
-	TeamName  string     `json:"team_name"`
-	TeamColor string     `json:"team_color"`
-	Flows     []RaceFlow `json:"flows"`
+type TeamDailyFlow struct {
+	TeamID    uuid.UUID   `json:"team_id"`
+	TeamName  string      `json:"team_name"`
+	TeamColor string      `json:"team_color"`
+	Flows     []DailyFlow `json:"flows"`
 }
 
 type FinanceStatsResponse struct {
 	TotalCirculation int64            `json:"total_circulation"`
 	TeamBalances     []TeamBalance    `json:"team_balances"`
 	CategoryTotals   map[string]int64 `json:"category_totals"`
-	RaceFlow         []RaceFlow       `json:"race_flow"`
-	TeamRaceFlows    []TeamRaceFlow   `json:"team_race_flows"`
+	DailyFlow        []DailyFlow      `json:"daily_flow"`
+	TeamDailyFlows   []TeamDailyFlow  `json:"team_daily_flows"`
 }
