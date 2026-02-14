@@ -46,6 +46,7 @@ export default function FinanceChart({ stats, accountDailyFlow, showTeamBalances
       date: flow.date,
       income: cumulativeIncome,
       expense: cumulativeExpense,
+      capital: cumulativeIncome - cumulativeExpense,
     }
   })
 
@@ -227,12 +228,12 @@ export default function FinanceChart({ stats, accountDailyFlow, showTeamBalances
                   }}
                   formatter={(value, name) => [
                     `${Number(value).toLocaleString('ko-KR')}원`,
-                    name === 'income' ? '누적 수입' : '누적 지출',
+                    name === 'income' ? '누적 수입' : name === 'expense' ? '누적 지출' : '자본',
                   ]}
                   labelStyle={{ color: '#9CA3AF' }}
                 />
                 <Legend
-                  formatter={(value) => (value === 'income' ? '누적 수입' : '누적 지출')}
+                  formatter={(value) => (value === 'income' ? '누적 수입' : value === 'expense' ? '누적 지출' : '자본')}
                   wrapperStyle={{ color: '#9CA3AF' }}
                 />
                 <Line
@@ -249,6 +250,14 @@ export default function FinanceChart({ stats, accountDailyFlow, showTeamBalances
                   stroke="#ef4444"
                   strokeWidth={2}
                   dot={{ fill: '#ef4444', strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="linear"
+                  dataKey="capital"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={{ fill: '#3b82f6', strokeWidth: 2 }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>
