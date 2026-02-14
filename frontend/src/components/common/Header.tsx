@@ -43,6 +43,12 @@ export default function Header() {
                   >
                     로드맵
                   </Link>
+                  <Link
+                    to="/shop"
+                    className="text-text-secondary hover:text-white transition-colors duration-150 font-medium"
+                  >
+                    상점
+                  </Link>
                 </nav>
 
                 {/* Auth Section */}
