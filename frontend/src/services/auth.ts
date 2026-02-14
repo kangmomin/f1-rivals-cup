@@ -41,6 +41,14 @@ export interface ErrorResponse {
   message: string
 }
 
+export interface OAuthLinkStatus {
+  provider: string
+  linked: boolean
+  provider_username?: string
+  provider_avatar?: string
+  linked_at?: string
+}
+
 export interface RefreshTokenResponse {
   access_token: string
   // Note: refresh_token is now sent via httpOnly cookie only
@@ -107,6 +115,32 @@ export const authService = {
       token,
       new_password: newPassword,
     })
+    return response.data
+  },
+
+  async getDiscordLoginURL(): Promise<{ url: string }> {
+    const response = await api.get<{ url: string }>('/auth/discord')
+    return response.data
+  },
+
+  async discordCallback(code: string, state: string): Promise<LoginResponse> {
+    const response = await api.post<LoginResponse>('/auth/discord/callback', { code, state })
+    localStorage.setItem('accessToken', response.data.access_token)
+    return response.data
+  },
+
+  async getDiscordLinkURL(): Promise<{ url: string }> {
+    const response = await api.get<{ url: string }>('/auth/discord/link')
+    return response.data
+  },
+
+  async unlinkDiscord(): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>('/auth/discord/link')
+    return response.data
+  },
+
+  async getLinkedAccounts(): Promise<OAuthLinkStatus[]> {
+    const response = await api.get<OAuthLinkStatus[]>('/auth/linked-accounts')
     return response.data
   },
 }

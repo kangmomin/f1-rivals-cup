@@ -29,6 +29,11 @@ type Config struct {
 
 	// AI
 	GeminiAPIKey string
+
+	// Discord OAuth
+	DiscordClientID     string
+	DiscordClientSecret string
+	DiscordRedirectURI  string
 }
 
 // Load reads configuration from environment variables
@@ -58,6 +63,11 @@ func Load() (*Config, error) {
 
 		// AI
 		GeminiAPIKey: getEnv("GEMINI_API_KEY", ""),
+
+		// Discord OAuth
+		DiscordClientID:     getEnv("DISCORD_CLIENT_ID", ""),
+		DiscordClientSecret: getEnv("DISCORD_CLIENT_SECRET", ""),
+		DiscordRedirectURI:  getEnv("DISCORD_REDIRECT_URI", "http://localhost:5173/auth/discord/callback"),
 	}
 
 	return cfg, nil
