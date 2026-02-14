@@ -23,6 +23,9 @@ type AuthHandler struct {
 	refreshTokenRepo *repository.RefreshTokenRepository
 	jwtService       *auth.JWTService
 	blacklist        *auth.TokenBlacklist
+	oauthRepo        *repository.OAuthAccountRepository
+	discordService   *auth.DiscordOAuthService
+	oauthState       *auth.OAuthState
 }
 
 // NewAuthHandler creates a new AuthHandler (deprecated: use NewAuthHandlerWithBlacklist)
@@ -41,12 +44,18 @@ func NewAuthHandlerWithBlacklist(
 	refreshTokenRepo *repository.RefreshTokenRepository,
 	jwtService *auth.JWTService,
 	blacklist *auth.TokenBlacklist,
+	oauthRepo *repository.OAuthAccountRepository,
+	discordService *auth.DiscordOAuthService,
+	oauthState *auth.OAuthState,
 ) *AuthHandler {
 	return &AuthHandler{
 		userRepo:         userRepo,
 		refreshTokenRepo: refreshTokenRepo,
 		jwtService:       jwtService,
 		blacklist:        blacklist,
+		oauthRepo:        oauthRepo,
+		discordService:   discordService,
+		oauthState:       oauthState,
 	}
 }
 

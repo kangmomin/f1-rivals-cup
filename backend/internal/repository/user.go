@@ -435,6 +435,60 @@ func (r *UserRepository) CountUsers(ctx context.Context) (int, error) {
 	return count, err
 }
 
+// CreateOAuthUser creates a new user without a password (for OAuth login)
+func (r *UserRepository) CreateOAuthUser(ctx context.Context, user *model.User) error {
+	defaultPerms := auth.DefaultUserPermissions()
+	defaultPermsJSON, err := json.Marshal(defaultPerms)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO users (email, nickname, email_verified, role, permissions)
+		VALUES ($1, $2, true, 'USER', $3::jsonb)
+		RETURNING id, role, permissions, version, email_verified, created_at, updated_at
+	`
+
+	var permissionsJSON []byte
+	err = r.db.Pool.QueryRowContext(ctx, query,
+		user.Email,
+		user.Nickname,
+		string(defaultPermsJSON),
+	).Scan(&user.ID, &user.Role, &permissionsJSON, &user.Version, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "users_email_key") {
+			return ErrEmailExists
+		}
+		if strings.Contains(err.Error(), "users_nickname_key") {
+			return ErrNicknameExists
+		}
+		return err
+	}
+
+	if err := json.Unmarshal(permissionsJSON, &user.Permissions); err != nil {
+		user.Permissions = []string{}
+	}
+
+	return nil
+}
+
+// HasPassword checks if a user has a non-null password_hash
+func (r *UserRepository) HasPassword(ctx context.Context, userID uuid.UUID) (bool, error) {
+	query := `SELECT password_hash IS NOT NULL FROM users WHERE id = $1`
+
+	var hasPassword bool
+	err := r.db.Pool.QueryRowContext(ctx, query, userID).Scan(&hasPassword)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrUserNotFound
+		}
+		return false, err
+	}
+
+	return hasPassword, nil
+}
+
 // CountUsersByRole returns the count of users by role
 func (r *UserRepository) CountUsersByRole(ctx context.Context) (map[string]int, error) {
 	query := `SELECT role, COUNT(*) FROM users GROUP BY role`

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
+import { authService, OAuthLinkStatus } from '../../services/auth'
+import DiscordIcon from '../../components/icons/DiscordIcon'
 
 const PARTICIPANT_STATUS_LABELS: Record<string, string> = {
   pending: '승인 대기중',
@@ -19,6 +21,8 @@ export default function MyPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [participations, setParticipations] = useState<LeagueParticipant[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [linkedAccounts, setLinkedAccounts] = useState<OAuthLinkStatus[]>([])
+  const [isLinkLoading, setIsLinkLoading] = useState(false)
 
   const handleDeleteParticipation = async (leagueId: string, e: React.MouseEvent) => {
     e.preventDefault()
@@ -30,6 +34,39 @@ export default function MyPage() {
       setParticipations(prev => prev.filter(p => p.league_id !== leagueId))
     } catch (err) {
       alert('삭제에 실패했습니다')
+    }
+  }
+
+  const fetchLinkedAccounts = async () => {
+    try {
+      const accounts = await authService.getLinkedAccounts()
+      setLinkedAccounts(accounts)
+    } catch (err) {
+      console.error('Failed to fetch linked accounts:', err)
+    }
+  }
+
+  const handleDiscordLink = async () => {
+    setIsLinkLoading(true)
+    try {
+      const { url } = await authService.getDiscordLinkURL()
+      window.location.href = url
+    } catch {
+      alert('Discord 연결 URL을 가져오는데 실패했습니다.')
+      setIsLinkLoading(false)
+    }
+  }
+
+  const handleDiscordUnlink = async () => {
+    if (!confirm('Discord 연결을 해제하시겠습니까?')) return
+    setIsLinkLoading(true)
+    try {
+      await authService.unlinkDiscord()
+      await fetchLinkedAccounts()
+    } catch {
+      alert('Discord 연결 해제에 실패했습니다.')
+    } finally {
+      setIsLinkLoading(false)
     }
   }
 
@@ -50,6 +87,9 @@ export default function MyPage() {
       }
     }
     fetchParticipations()
+    if (isAuthenticated) {
+      fetchLinkedAccounts()
+    }
   }, [isAuthenticated])
 
   const formatDate = (dateStr: string) => {
@@ -97,6 +137,49 @@ export default function MyPage() {
               <h1 className="text-2xl font-bold text-white">{user?.nickname}</h1>
               <p className="text-text-secondary">{user?.email}</p>
             </div>
+          </div>
+        </div>
+
+        {/* Linked Accounts Section */}
+        <div className="bg-carbon-dark border border-steel rounded-xl overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-steel">
+            <h2 className="text-lg font-bold text-white">연결된 계정</h2>
+          </div>
+          <div className="divide-y divide-steel">
+            {(() => {
+              const discord = linkedAccounts.find(a => a.provider === 'discord')
+              return (
+                <div className="px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <DiscordIcon className="w-6 h-6 text-[#5865F2]" />
+                    <div>
+                      <span className="text-white font-medium">Discord</span>
+                      {discord?.linked && discord.provider_username && (
+                        <p className="text-sm text-text-secondary">{discord.provider_username}</p>
+                      )}
+                    </div>
+                  </div>
+                  {discord?.linked ? (
+                    <button
+                      onClick={handleDiscordUnlink}
+                      disabled={isLinkLoading}
+                      className="px-3 py-1.5 bg-loss/10 text-loss hover:bg-loss/20 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      연결 해제
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleDiscordLink}
+                      disabled={isLinkLoading}
+                      className="px-3 py-1.5 rounded text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                      style={{ backgroundColor: '#5865F2' }}
+                    >
+                      Discord 연결
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </div>
 
