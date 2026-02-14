@@ -200,7 +200,7 @@ export default function MatchDetailPage() {
                         {result.participant_name || '-'}
                       </td>
                       <td className="px-4 py-3 text-text-secondary">
-                        {result.team_name || '-'}
+                        {result.stored_team_name || result.team_name || '-'}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {result.fastest_lap && (
@@ -264,7 +264,7 @@ export default function MatchDetailPage() {
                           {result.participant_name || '-'}
                         </td>
                         <td className="px-4 py-3 text-text-secondary">
-                          {result.team_name || '-'}
+                          {result.stored_team_name || result.team_name || '-'}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <span className={`font-bold ${result.sprint_points > 0 ? 'text-racing' : 'text-text-secondary'}`}>
