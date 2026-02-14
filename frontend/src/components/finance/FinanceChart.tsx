@@ -37,11 +37,17 @@ export default function FinanceChart({ stats, accountWeeklyFlow, showTeamBalance
 
   // 계좌별 주별 통계가 제공되면 사용, 아니면 리그 전체 통계 사용
   const weeklyFlowSource = accountWeeklyFlow ?? stats?.weekly_flow ?? []
-  const weeklyFlowData = weeklyFlowSource.map((flow) => ({
-    week: flow.week,
-    income: flow.income,
-    expense: flow.expense,
-  }))
+  let cumulativeIncome = 0
+  let cumulativeExpense = 0
+  const weeklyFlowData = weeklyFlowSource.map((flow) => {
+    cumulativeIncome += flow.income
+    cumulativeExpense += flow.expense
+    return {
+      week: flow.week,
+      income: cumulativeIncome,
+      expense: cumulativeExpense,
+    }
+  })
 
   // 팀별 주별 자금 흐름 데이터 처리 (다중 라인 차트용)
   const processTeamWeeklyFlows = () => {
@@ -55,13 +61,16 @@ export default function FinanceChart({ stats, accountWeeklyFlow, showTeamBalance
     })
     const sortedWeeks = Array.from(allWeeks).sort()
 
-    // 각 주차별 데이터를 팀별로 정리
+    // 각 주차별 데이터를 팀별 누적 잔액으로 정리
+    const cumulative: Record<string, number> = {}
+    flows.forEach(team => { cumulative[team.team_name] = 0 })
+
     const data = sortedWeeks.map(week => {
       const weekData: Record<string, string | number> = { week }
       flows.forEach(team => {
         const flow = team.flows.find(f => f.week === week)
-        // 순 자금 변동 (수입 - 지출)
-        weekData[team.team_name] = flow ? flow.income - flow.expense : 0
+        cumulative[team.team_name] += flow ? flow.income - flow.expense : 0
+        weekData[team.team_name] = cumulative[team.team_name]
       })
       return weekData
     })
@@ -126,10 +135,10 @@ export default function FinanceChart({ stats, accountWeeklyFlow, showTeamBalance
         </div>
       )}
 
-      {/* Team Weekly Flow Multi-Line Chart - 팀별 주별 자금 흐름 (teamWeeklyFlows 또는 stats.team_weekly_flows가 있을 때 표시) */}
+      {/* Team Weekly Flow Multi-Line Chart - 팀별 누적 자금 흐름 (teamWeeklyFlows 또는 stats.team_weekly_flows가 있을 때 표시) */}
       {teamList.length > 0 && (
         <div className="bg-carbon-dark border border-steel rounded-xl p-5">
-          <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">팀별 주별 자금 흐름</h3>
+          <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">팀별 누적 자금 흐름</h3>
           {teamFlowData.length === 0 ? (
             <div className="h-64 flex items-center justify-center">
               <p className="text-text-secondary">데이터가 없습니다</p>
@@ -169,7 +178,7 @@ export default function FinanceChart({ stats, accountWeeklyFlow, showTeamBalance
                   {teamList.map((team) => (
                     <Line
                       key={team.name}
-                      type="monotone"
+                      type="linear"
                       dataKey={team.name}
                       stroke={team.color}
                       strokeWidth={2}
@@ -184,9 +193,9 @@ export default function FinanceChart({ stats, accountWeeklyFlow, showTeamBalance
         </div>
       )}
 
-      {/* Weekly Flow Line Chart - 기존 주별 자금 흐름 (수입/지출) */}
+      {/* Weekly Flow Line Chart - 누적 자금 흐름 (수입/지출) */}
       <div className="bg-carbon-dark border border-steel rounded-xl p-5">
-        <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">주별 자금 흐름</h3>
+        <h3 className="text-sm font-medium text-text-secondary uppercase mb-4">누적 자금 흐름</h3>
         {weeklyFlowData.length === 0 ? (
           <div className="h-64 flex items-center justify-center">
             <p className="text-text-secondary">데이터가 없습니다</p>
@@ -218,16 +227,16 @@ export default function FinanceChart({ stats, accountWeeklyFlow, showTeamBalance
                   }}
                   formatter={(value, name) => [
                     `${Number(value).toLocaleString('ko-KR')}원`,
-                    name === 'income' ? '수입' : '지출',
+                    name === 'income' ? '누적 수입' : '누적 지출',
                   ]}
                   labelStyle={{ color: '#9CA3AF' }}
                 />
                 <Legend
-                  formatter={(value) => (value === 'income' ? '수입' : '지출')}
+                  formatter={(value) => (value === 'income' ? '누적 수입' : '누적 지출')}
                   wrapperStyle={{ color: '#9CA3AF' }}
                 />
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey="income"
                   stroke="#22c55e"
                   strokeWidth={2}
@@ -235,7 +244,7 @@ export default function FinanceChart({ stats, accountWeeklyFlow, showTeamBalance
                   activeDot={{ r: 6 }}
                 />
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey="expense"
                   stroke="#ef4444"
                   strokeWidth={2}

@@ -60,7 +60,7 @@ export default function TeamPointsChart({ raceData, teams }: TeamPointsChartProp
           {teams.map((team) => (
             <Line
               key={team.name}
-              type="monotone"
+              type="linear"
               dataKey={team.name}
               stroke={team.color}
               strokeWidth={2}
