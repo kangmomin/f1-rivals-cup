@@ -60,7 +60,7 @@ export default function DriverPointsChart({ raceData, drivers }: DriverPointsCha
           {drivers.map((driver) => (
             <Line
               key={driver.name}
-              type="monotone"
+              type="linear"
               dataKey={driver.name}
               stroke={driver.color}
               strokeWidth={2}
