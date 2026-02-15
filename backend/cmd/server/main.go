@@ -63,11 +63,18 @@ func main() {
 	accountRepo := repository.NewAccountRepository(db)
 	transactionRepo := repository.NewTransactionRepository(db)
 
+	// Initialize OAuth repository
+	oauthRepo := repository.NewOAuthAccountRepository(db)
+
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(cfg.JWTSecret, cfg.JWTAccessExpiry, cfg.JWTRefreshExpiry)
 
 	// Initialize token blacklist for access token revocation
 	tokenBlacklist := auth.NewTokenBlacklist()
+
+	// Initialize Discord OAuth service and state manager
+	discordService := auth.NewDiscordOAuthService(cfg.DiscordClientID, cfg.DiscordClientSecret, cfg.DiscordRedirectURI)
+	oauthState := auth.NewOAuthState()
 
 	// Initialize services
 	aiService := service.NewAIService(cfg.GeminiAPIKey)
@@ -78,7 +85,7 @@ func main() {
 
 	// Initialize handlers
 	healthHandler := handler.NewHealthHandler()
-	authHandler := handler.NewAuthHandlerWithBlacklist(userRepo, refreshTokenRepo, jwtService, tokenBlacklist)
+	authHandler := handler.NewAuthHandlerWithBlacklist(userRepo, refreshTokenRepo, jwtService, tokenBlacklist, oauthRepo, discordService, oauthState)
 	adminHandler := handler.NewAdminHandler(userRepo, permissionHistoryRepo)
 	leagueHandler := handler.NewLeagueHandler(leagueRepo)
 	participantHandler := handler.NewParticipantHandler(participantRepo, leagueRepo, accountRepo)
@@ -128,6 +135,13 @@ func main() {
 	optionalAuthMiddleware := custommiddleware.OptionalAuthMiddleware(jwtService)
 
 	authGroup.GET("/me", authHandler.GetMe, authMiddleware)
+
+	// Discord OAuth routes
+	authGroup.GET("/discord", authHandler.DiscordLogin)
+	authGroup.POST("/discord/callback", authHandler.DiscordCallback)
+	authGroup.GET("/discord/link", authHandler.DiscordLink, authMiddleware)
+	authGroup.DELETE("/discord/link", authHandler.DiscordUnlink, authMiddleware)
+	authGroup.GET("/linked-accounts", authHandler.GetLinkedAccounts, authMiddleware)
 
 	// Admin routes (protected - require STAFF or ADMIN role)
 	adminGroup := v1.Group("/admin")
@@ -288,6 +302,9 @@ func main() {
 
 	// Stop token blacklist background cleanup
 	tokenBlacklist.Stop()
+
+	// Stop OAuth state cleanup
+	oauthState.Stop()
 
 	// Graceful shutdown with timeout
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)

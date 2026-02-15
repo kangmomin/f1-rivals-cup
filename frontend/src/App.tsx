@@ -8,6 +8,7 @@ import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
+import DiscordCallbackPage from './pages/auth/DiscordCallbackPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import DashboardPage from './pages/admin/DashboardPage'
 import UsersPage from './pages/admin/UsersPage'
@@ -26,6 +27,7 @@ import NewsDetailPage from './pages/news/NewsDetailPage'
 import NewsEditorPage from './pages/news/NewsEditorPage'
 import MatchDetailPage from './pages/matches/MatchDetailPage'
 import RoadmapPage from './pages/roadmap/RoadmapPage'
+import ShopPage from './pages/shop/ShopPage'
 import MyPage from './pages/mypage/MyPage'
 import TeamChangeRequestPage from './pages/leagues/TeamChangeRequestPage'
 
@@ -182,6 +184,7 @@ function MainLayout() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/auth/discord/callback" element={<DiscordCallbackPage />} />
           <Route path="/leagues" element={<LeaguesPage />} />
           <Route path="/leagues/:id" element={<LeagueDetailPage />} />
           <Route path="/leagues/:id/standings" element={<StandingsPage />} />
@@ -195,6 +198,7 @@ function MainLayout() {
           <Route path="/news/:id/edit" element={<NewsEditorPage />} />
           <Route path="/matches/:id" element={<MatchDetailPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
+          <Route path="/shop" element={<ShopPage />} />
           <Route path="/mypage" element={<MyPage />} />
         </Routes>
       </div>

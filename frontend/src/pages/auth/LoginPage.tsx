@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../../services/auth'
 import { useAuth } from '../../contexts/AuthContext'
+import DiscordIcon from '../../components/icons/DiscordIcon'
 import axios from 'axios'
 
 const loginSchema = z.object({
@@ -16,6 +17,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [isDiscordLoading, setIsDiscordLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { login } = useAuth()
@@ -27,6 +29,18 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   })
+
+  const handleDiscordLogin = async () => {
+    setIsDiscordLoading(true)
+    setError(null)
+    try {
+      const { url } = await authService.getDiscordLoginURL()
+      window.location.href = url
+    } catch {
+      setError('Discord 로그인 URL을 가져오는데 실패했습니다.')
+      setIsDiscordLoading(false)
+    }
+  }
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
@@ -130,6 +144,28 @@ export default function LoginPage() {
               {isLoading ? '로그인 중...' : '로그인'}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-steel"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-carbon-dark text-text-secondary">또는</span>
+            </div>
+          </div>
+
+          {/* Discord Login */}
+          <button
+            type="button"
+            onClick={handleDiscordLogin}
+            disabled={isDiscordLoading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+            style={{ backgroundColor: '#5865F2' }}
+          >
+            <DiscordIcon className="w-5 h-5" />
+            {isDiscordLoading ? 'Discord 로그인 중...' : 'Discord로 로그인'}
+          </button>
 
           {/* Register Link */}
           <div className="mt-6 text-center text-sm text-text-secondary">

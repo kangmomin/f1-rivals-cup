@@ -80,6 +80,15 @@ export default function MobileDrawer({ isOpen, onClose, user, isAuthenticated, i
                 로드맵
               </Link>
             </li>
+            <li>
+              <Link
+                to="/shop"
+                onClick={onClose}
+                className="block px-4 py-3 rounded-lg text-text-secondary hover:bg-steel/30 hover:text-white transition-colors touch-target"
+              >
+                상점
+              </Link>
+            </li>
           </ul>
         </nav>
 

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../../services/auth'
+import DiscordIcon from '../../components/icons/DiscordIcon'
 import axios from 'axios'
 
 const registerSchema = z.object({
@@ -27,6 +28,7 @@ type RegisterFormData = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [isDiscordLoading, setIsDiscordLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const navigate = useNavigate()
@@ -175,6 +177,38 @@ export default function RegisterPage() {
               {isLoading ? '가입 중...' : '회원가입'}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-steel"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-carbon-dark text-text-secondary">또는</span>
+            </div>
+          </div>
+
+          {/* Discord Register */}
+          <button
+            type="button"
+            onClick={async () => {
+              setIsDiscordLoading(true)
+              setError(null)
+              try {
+                const { url } = await authService.getDiscordLoginURL()
+                window.location.href = url
+              } catch {
+                setError('Discord 로그인 URL을 가져오는데 실패했습니다.')
+                setIsDiscordLoading(false)
+              }
+            }}
+            disabled={isDiscordLoading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+            style={{ backgroundColor: '#5865F2' }}
+          >
+            <DiscordIcon className="w-5 h-5" />
+            {isDiscordLoading ? 'Discord 연결 중...' : 'Discord로 가입'}
+          </button>
 
           {/* Login Link */}
           <div className="mt-6 text-center text-sm text-text-secondary">
