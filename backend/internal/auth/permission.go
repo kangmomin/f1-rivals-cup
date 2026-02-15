@@ -56,6 +56,14 @@ const (
 	PermLeagueDelete Permission = "league.delete" // Delete league
 )
 
+// Store permissions
+const (
+	PermStoreCreate Permission = "store.create" // Create product
+	PermStoreEdit   Permission = "store.edit"   // Edit product
+	PermStoreDelete Permission = "store.delete" // Delete product
+	PermStoreManage Permission = "store.manage" // Manage all products
+)
+
 // Wildcard permission for ADMIN
 const PermWildcard Permission = "*"
 
@@ -95,6 +103,11 @@ func AllPermissions() []Permission {
 		PermLeagueCreate,
 		PermLeagueEdit,
 		PermLeagueDelete,
+		// Store
+		PermStoreCreate,
+		PermStoreEdit,
+		PermStoreDelete,
+		PermStoreManage,
 	}
 }
 
@@ -129,6 +142,11 @@ func GetPermissionInfo() []PermissionInfo {
 		{PermLeagueCreate, "리그 생성", "새 리그 생성", "league"},
 		{PermLeagueEdit, "리그 수정", "리그 정보 수정", "league"},
 		{PermLeagueDelete, "리그 삭제", "리그 삭제", "league"},
+		// Store
+		{PermStoreCreate, "상품 등록", "상점에 상품 등록", "store"},
+		{PermStoreEdit, "상품 수정", "상점 상품 수정", "store"},
+		{PermStoreDelete, "상품 삭제", "상점 상품 삭제", "store"},
+		{PermStoreManage, "상점 관리", "상점 전체 관리", "store"},
 	}
 }
 

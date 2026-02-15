@@ -62,6 +62,10 @@ func main() {
 	commentRepo := repository.NewCommentRepository(db)
 	accountRepo := repository.NewAccountRepository(db)
 	transactionRepo := repository.NewTransactionRepository(db)
+	productRepo := repository.NewProductRepository(db)
+
+	// Initialize OAuth repository
+	oauthRepo := repository.NewOAuthAccountRepository(db)
 
 	// Initialize OAuth repository
 	oauthRepo := repository.NewOAuthAccountRepository(db)
@@ -96,6 +100,7 @@ func main() {
 	commentHandler := handler.NewCommentHandler(commentRepo)
 	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
 	teamChangeHandler := handler.NewTeamChangeHandler(teamChangeRepo, participantRepo, teamRepo, leagueRepo, teamChangeActivityRepo)
+	productHandler := handler.NewProductHandler(productRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -270,10 +275,24 @@ func main() {
 	protectedLeagueGroup.PUT("/:id/team-change-requests/:requestId", teamChangeHandler.ReviewRequest)
 	protectedLeagueGroup.DELETE("/:id/team-change-requests/:requestId", teamChangeHandler.CancelRequest)
 
+	// Public product routes
+	productGroup := v1.Group("/products")
+	productGroup.GET("", productHandler.List)
+	productGroup.GET("/:id", productHandler.Get)
+
+	// Protected product routes
+	protectedProductGroup := v1.Group("/products")
+	protectedProductGroup.Use(authMiddleware)
+	protectedProductGroup.POST("", productHandler.Create, custommiddleware.RequirePermission(auth.PermStoreCreate))
+	protectedProductGroup.PUT("/:id", productHandler.Update, custommiddleware.RequirePermission(auth.PermStoreEdit))
+	protectedProductGroup.DELETE("/:id", productHandler.Delete, custommiddleware.RequirePermission(auth.PermStoreDelete))
+	protectedProductGroup.PUT("/:id/options", productHandler.ManageOptions, custommiddleware.RequirePermission(auth.PermStoreEdit))
+
 	// User profile routes (protected)
 	meGroup := v1.Group("/me")
 	meGroup.Use(authMiddleware)
 	meGroup.GET("/participations", participantHandler.ListMyParticipations)
+	meGroup.GET("/products", productHandler.ListMy, custommiddleware.RequirePermission(auth.PermStoreCreate))
 
 	// Initialize and start scheduler
 	ctx, cancel := context.WithCancel(context.Background())
