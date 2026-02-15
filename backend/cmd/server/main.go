@@ -67,6 +67,9 @@ func main() {
 	// Initialize OAuth repository
 	oauthRepo := repository.NewOAuthAccountRepository(db)
 
+	// Initialize OAuth repository
+	oauthRepo := repository.NewOAuthAccountRepository(db)
+
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(cfg.JWTSecret, cfg.JWTAccessExpiry, cfg.JWTRefreshExpiry)
 
