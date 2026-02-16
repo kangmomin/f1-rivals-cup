@@ -12,6 +12,7 @@ import (
 	"github.com/f1-rivals-cup/backend/internal/auth"
 	"github.com/f1-rivals-cup/backend/internal/config"
 	"github.com/f1-rivals-cup/backend/internal/database"
+	"github.com/f1-rivals-cup/backend/internal/discord"
 	"github.com/f1-rivals-cup/backend/internal/handler"
 	custommiddleware "github.com/f1-rivals-cup/backend/internal/middleware"
 	"github.com/f1-rivals-cup/backend/internal/repository"
@@ -296,6 +297,18 @@ func main() {
 	matchScheduler := scheduler.New(matchRepo, 10*time.Minute)
 	go matchScheduler.Start(ctx)
 
+	// Discord Bot (only start if configured)
+	var discordBot *discord.Bot
+	if cfg.DiscordBotToken != "" {
+		var err error
+		discordBot, err = discord.NewBot(cfg.DiscordBotToken, cfg.DiscordGuildID, leagueRepo, matchRepo, matchResultRepo)
+		if err != nil {
+			slog.Error("Failed to create Discord bot", "error", err)
+		} else {
+			go discordBot.Start(ctx)
+		}
+	}
+
 	// Start server with graceful shutdown
 	go func() {
 		slog.Info("Starting server", "port", cfg.ServerPort)
@@ -315,6 +328,11 @@ func main() {
 	// Stop scheduler
 	cancel()
 	matchScheduler.Stop()
+
+	// Stop Discord bot
+	if discordBot != nil {
+		discordBot.Stop()
+	}
 
 	// Stop token blacklist background cleanup
 	tokenBlacklist.Stop()

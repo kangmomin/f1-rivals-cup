@@ -12,7 +12,9 @@ require (
 )
 
 require (
+	github.com/bwmarrin/discordgo v0.29.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

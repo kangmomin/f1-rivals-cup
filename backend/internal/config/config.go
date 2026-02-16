@@ -34,6 +34,10 @@ type Config struct {
 	DiscordClientID     string
 	DiscordClientSecret string
 	DiscordRedirectURI  string
+
+	// Discord Bot
+	DiscordBotToken string
+	DiscordGuildID  string
 }
 
 // Load reads configuration from environment variables
@@ -68,6 +72,10 @@ func Load() (*Config, error) {
 		DiscordClientID:     getEnv("DISCORD_CLIENT_ID", ""),
 		DiscordClientSecret: getEnv("DISCORD_CLIENT_SECRET", ""),
 		DiscordRedirectURI:  getEnv("DISCORD_REDIRECT_URI", "http://localhost:5173/auth/discord/callback"),
+
+		// Discord Bot
+		DiscordBotToken: getEnv("DISCORD_BOT_TOKEN", ""),
+		DiscordGuildID:  getEnv("DISCORD_GUILD_ID", ""),
 	}
 
 	return cfg, nil
