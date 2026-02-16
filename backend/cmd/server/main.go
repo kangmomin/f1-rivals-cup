@@ -64,6 +64,7 @@ func main() {
 	accountRepo := repository.NewAccountRepository(db)
 	transactionRepo := repository.NewTransactionRepository(db)
 	productRepo := repository.NewProductRepository(db)
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
 
 	// Initialize OAuth repository
 	oauthRepo := repository.NewOAuthAccountRepository(db)
@@ -99,6 +100,7 @@ func main() {
 	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
 	teamChangeHandler := handler.NewTeamChangeHandler(teamChangeRepo, participantRepo, teamRepo, leagueRepo, teamChangeActivityRepo)
 	productHandler := handler.NewProductHandler(productRepo)
+	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionRepo, productRepo, accountRepo, participantRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -277,6 +279,7 @@ func main() {
 	productGroup := v1.Group("/products")
 	productGroup.GET("", productHandler.List)
 	productGroup.GET("/:id", productHandler.Get)
+	productGroup.GET("/:id/access", subscriptionHandler.CheckAccess, optionalAuthMiddleware)
 
 	// Protected product routes
 	protectedProductGroup := v1.Group("/products")
@@ -286,16 +289,25 @@ func main() {
 	protectedProductGroup.DELETE("/:id", productHandler.Delete, custommiddleware.RequirePermission(auth.PermStoreDelete))
 	protectedProductGroup.PUT("/:id/options", productHandler.ManageOptions, custommiddleware.RequirePermission(auth.PermStoreEdit))
 
+	// Protected subscription routes
+	subscriptionGroup := v1.Group("/subscriptions")
+	subscriptionGroup.Use(authMiddleware)
+	subscriptionGroup.POST("", subscriptionHandler.Subscribe)
+	subscriptionGroup.POST("/:id/renew", subscriptionHandler.Renew)
+
 	// User profile routes (protected)
 	meGroup := v1.Group("/me")
 	meGroup.Use(authMiddleware)
 	meGroup.GET("/participations", participantHandler.ListMyParticipations)
 	meGroup.GET("/products", productHandler.ListMy, custommiddleware.RequirePermission(auth.PermStoreCreate))
+	meGroup.GET("/subscriptions", subscriptionHandler.ListMy)
 
-	// Initialize and start scheduler
+	// Initialize and start schedulers
 	ctx, cancel := context.WithCancel(context.Background())
 	matchScheduler := scheduler.New(matchRepo, 10*time.Minute)
 	go matchScheduler.Start(ctx)
+	subScheduler := scheduler.NewSubscriptionScheduler(subscriptionRepo, 5*time.Minute)
+	go subScheduler.Start(ctx)
 
 	// Discord Bot (only start if configured)
 	var discordBot *discord.Bot
@@ -325,9 +337,10 @@ func main() {
 
 	slog.Info("Shutting down server...")
 
-	// Stop scheduler
+	// Stop schedulers
 	cancel()
 	matchScheduler.Stop()
+	subScheduler.Stop()
 
 	// Stop Discord bot
 	if discordBot != nil {

@@ -13,6 +13,7 @@ const (
 	CategoryTransfer    TransactionCategory = "transfer"
 	CategoryPenalty     TransactionCategory = "penalty"
 	CategorySponsorship TransactionCategory = "sponsorship"
+	CategoryPurchase    TransactionCategory = "purchase"
 	CategoryOther       TransactionCategory = "other"
 )
 

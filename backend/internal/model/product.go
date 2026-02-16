@@ -8,17 +8,18 @@ import (
 
 // Product represents a product in the shop
 type Product struct {
-	ID             uuid.UUID       `json:"id"`
-	SellerID       uuid.UUID       `json:"seller_id"`
-	Name           string          `json:"name"`
-	Description    string          `json:"description"`
-	Price          int64           `json:"price"`
-	ImageURL       string          `json:"image_url,omitempty"`
-	Status         string          `json:"status"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
-	SellerNickname string          `json:"seller_nickname,omitempty"`
-	Options        []ProductOption `json:"options,omitempty"`
+	ID                       uuid.UUID       `json:"id"`
+	SellerID                 uuid.UUID       `json:"seller_id"`
+	Name                     string          `json:"name"`
+	Description              string          `json:"description"`
+	Price                    int64           `json:"price"`
+	ImageURL                 string          `json:"image_url,omitempty"`
+	Status                   string          `json:"status"`
+	SubscriptionDurationDays *int            `json:"subscription_duration_days,omitempty"`
+	CreatedAt                time.Time       `json:"created_at"`
+	UpdatedAt                time.Time       `json:"updated_at"`
+	SellerNickname           string          `json:"seller_nickname,omitempty"`
+	Options                  []ProductOption `json:"options,omitempty"`
 }
 
 // ProductOption represents an option for a product
@@ -33,11 +34,12 @@ type ProductOption struct {
 
 // CreateProductRequest represents a request to create a product
 type CreateProductRequest struct {
-	Name        string                       `json:"name" validate:"required,min=2,max=200"`
-	Description string                       `json:"description"`
-	Price       int64                        `json:"price" validate:"min=0"`
-	ImageURL    string                       `json:"image_url,omitempty"`
-	Options     []CreateProductOptionRequest `json:"options,omitempty"`
+	Name                     string                       `json:"name" validate:"required,min=2,max=200"`
+	Description              string                       `json:"description"`
+	Price                    int64                        `json:"price" validate:"min=0"`
+	ImageURL                 string                       `json:"image_url,omitempty"`
+	SubscriptionDurationDays *int                         `json:"subscription_duration_days,omitempty"`
+	Options                  []CreateProductOptionRequest `json:"options,omitempty"`
 }
 
 // CreateProductOptionRequest represents a request to create a product option
@@ -49,11 +51,12 @@ type CreateProductOptionRequest struct {
 
 // UpdateProductRequest represents a request to update a product
 type UpdateProductRequest struct {
-	Name        *string `json:"name,omitempty" validate:"omitempty,min=2,max=200"`
-	Description *string `json:"description,omitempty"`
-	Price       *int64  `json:"price,omitempty" validate:"omitempty,min=0"`
-	ImageURL    *string `json:"image_url,omitempty"`
-	Status      *string `json:"status,omitempty"`
+	Name                     *string `json:"name,omitempty" validate:"omitempty,min=2,max=200"`
+	Description              *string `json:"description,omitempty"`
+	Price                    *int64  `json:"price,omitempty" validate:"omitempty,min=0"`
+	ImageURL                 *string `json:"image_url,omitempty"`
+	Status                   *string `json:"status,omitempty"`
+	SubscriptionDurationDays **int   `json:"subscription_duration_days,omitempty"`
 }
 
 // ListProductsResponse represents the response for listing products

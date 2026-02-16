@@ -33,8 +33,8 @@ func (r *ProductRepository) Create(ctx context.Context, product *model.Product) 
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO products (seller_id, name, description, price, image_url, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO products (seller_id, name, description, price, image_url, status, subscription_duration_days)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -45,6 +45,7 @@ func (r *ProductRepository) Create(ctx context.Context, product *model.Product) 
 		product.Price,
 		product.ImageURL,
 		product.Status,
+		product.SubscriptionDurationDays,
 	).Scan(&product.ID, &product.CreatedAt, &product.UpdatedAt)
 	if err != nil {
 		return err
@@ -76,7 +77,7 @@ func (r *ProductRepository) Create(ctx context.Context, product *model.Product) 
 // GetByID retrieves a product by ID with seller info and options
 func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
 	query := `
-		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.created_at, p.updated_at, u.nickname
+		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.subscription_duration_days, p.created_at, p.updated_at, u.nickname
 		FROM products p
 		JOIN users u ON p.seller_id = u.id
 		WHERE p.id = $1
@@ -84,6 +85,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.P
 
 	product := &model.Product{}
 	var imageURL sql.NullString
+	var subDays sql.NullInt64
 	err := r.db.Pool.QueryRowContext(ctx, query, id).Scan(
 		&product.ID,
 		&product.SellerID,
@@ -92,6 +94,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.P
 		&product.Price,
 		&imageURL,
 		&product.Status,
+		&subDays,
 		&product.CreatedAt,
 		&product.UpdatedAt,
 		&product.SellerNickname,
@@ -104,6 +107,10 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.P
 	}
 	if imageURL.Valid {
 		product.ImageURL = imageURL.String
+	}
+	if subDays.Valid {
+		d := int(subDays.Int64)
+		product.SubscriptionDurationDays = &d
 	}
 
 	// Fetch options
@@ -167,7 +174,7 @@ func (r *ProductRepository) List(ctx context.Context, page, limit int, status st
 
 	// Get products
 	query := `
-		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.created_at, p.updated_at, u.nickname
+		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.subscription_duration_days, p.created_at, p.updated_at, u.nickname
 		FROM products p
 		JOIN users u ON p.seller_id = u.id
 		WHERE p.status = $1
@@ -185,6 +192,7 @@ func (r *ProductRepository) List(ctx context.Context, page, limit int, status st
 	for rows.Next() {
 		product := &model.Product{}
 		var imageURL sql.NullString
+		var subDays sql.NullInt64
 		if err := rows.Scan(
 			&product.ID,
 			&product.SellerID,
@@ -193,6 +201,7 @@ func (r *ProductRepository) List(ctx context.Context, page, limit int, status st
 			&product.Price,
 			&imageURL,
 			&product.Status,
+			&subDays,
 			&product.CreatedAt,
 			&product.UpdatedAt,
 			&product.SellerNickname,
@@ -201,6 +210,10 @@ func (r *ProductRepository) List(ctx context.Context, page, limit int, status st
 		}
 		if imageURL.Valid {
 			product.ImageURL = imageURL.String
+		}
+		if subDays.Valid {
+			d := int(subDays.Int64)
+			product.SubscriptionDurationDays = &d
 		}
 		products = append(products, product)
 	}
@@ -225,7 +238,7 @@ func (r *ProductRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID
 
 	// Get products
 	query := `
-		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.created_at, p.updated_at, u.nickname
+		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.subscription_duration_days, p.created_at, p.updated_at, u.nickname
 		FROM products p
 		JOIN users u ON p.seller_id = u.id
 		WHERE p.seller_id = $1
@@ -243,6 +256,7 @@ func (r *ProductRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID
 	for rows.Next() {
 		product := &model.Product{}
 		var imageURL sql.NullString
+		var subDays sql.NullInt64
 		if err := rows.Scan(
 			&product.ID,
 			&product.SellerID,
@@ -251,6 +265,7 @@ func (r *ProductRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID
 			&product.Price,
 			&imageURL,
 			&product.Status,
+			&subDays,
 			&product.CreatedAt,
 			&product.UpdatedAt,
 			&product.SellerNickname,
@@ -259,6 +274,10 @@ func (r *ProductRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID
 		}
 		if imageURL.Valid {
 			product.ImageURL = imageURL.String
+		}
+		if subDays.Valid {
+			d := int(subDays.Int64)
+			product.SubscriptionDurationDays = &d
 		}
 		products = append(products, product)
 	}
@@ -274,8 +293,8 @@ func (r *ProductRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID
 func (r *ProductRepository) Update(ctx context.Context, product *model.Product) error {
 	query := `
 		UPDATE products
-		SET name = $1, description = $2, price = $3, image_url = $4, status = $5, updated_at = NOW()
-		WHERE id = $6
+		SET name = $1, description = $2, price = $3, image_url = $4, status = $5, subscription_duration_days = $6, updated_at = NOW()
+		WHERE id = $7
 	`
 
 	result, err := r.db.Pool.ExecContext(ctx, query,
@@ -284,6 +303,7 @@ func (r *ProductRepository) Update(ctx context.Context, product *model.Product) 
 		product.Price,
 		product.ImageURL,
 		product.Status,
+		product.SubscriptionDurationDays,
 		product.ID,
 	)
 	if err != nil {

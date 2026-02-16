@@ -123,12 +123,13 @@ func (h *ProductHandler) Create(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	product := &model.Product{
-		SellerID:    userID,
-		Name:        req.Name,
-		Description: req.Description,
-		Price:       req.Price,
-		ImageURL:    req.ImageURL,
-		Status:      "active",
+		SellerID:                 userID,
+		Name:                    req.Name,
+		Description:             req.Description,
+		Price:                   req.Price,
+		ImageURL:                req.ImageURL,
+		Status:                  "active",
+		SubscriptionDurationDays: req.SubscriptionDurationDays,
 	}
 
 	// Convert option requests to options
@@ -241,6 +242,9 @@ func (h *ProductHandler) Update(c echo.Context) error {
 			})
 		}
 		product.Status = status
+	}
+	if req.SubscriptionDurationDays != nil {
+		product.SubscriptionDurationDays = *req.SubscriptionDurationDays
 	}
 
 	if err := h.productRepo.Update(ctx, product); err != nil {
