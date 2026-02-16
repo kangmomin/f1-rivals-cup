@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -109,8 +110,14 @@ func (s *MatchScheduler) checkAndUpdateMatches(ctx context.Context) {
 	}
 }
 
-// parseMatchDateTime parses date (YYYY-MM-DD) and optional time (HH:MM or HH:MM:SS) into time.Time
+// parseMatchDateTime parses date and optional time into time.Time.
+// date may be "2006-01-02" or ISO 8601 "2006-01-02T15:04:05Z".
 func (s *MatchScheduler) parseMatchDateTime(dateStr string, timeStr *string) (time.Time, error) {
+	// Normalise ISO 8601 date to plain YYYY-MM-DD
+	if idx := strings.IndexByte(dateStr, 'T'); idx != -1 {
+		dateStr = dateStr[:idx]
+	}
+
 	// Default time to 00:00:00 if not provided
 	timeVal := "00:00:00"
 	if timeStr != nil && *timeStr != "" {
