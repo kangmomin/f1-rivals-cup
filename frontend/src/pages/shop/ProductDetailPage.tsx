@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
 import { productService, Product } from '../../services/product'
 import { subscriptionService, CheckAccessResponse } from '../../services/subscription'
 import { participantService, LeagueParticipant } from '../../services/participant'
@@ -339,8 +340,32 @@ export default function ProductDetailPage() {
                   </svg>
                   구매자 전용 콘텐츠
                 </h2>
-                <div className="bg-carbon border border-neon/20 rounded-lg p-4">
-                  <p className="text-white whitespace-pre-wrap leading-relaxed">{content}</p>
+                <div className="bg-carbon border border-neon/20 rounded-lg p-4 prose prose-invert prose-sm max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-4 mb-2">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-lg font-bold text-white mt-3 mb-2">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-base font-bold text-white mt-2 mb-1">{children}</h3>,
+                      p: ({ children }) => <p className="text-text-secondary leading-relaxed mb-3">{children}</p>,
+                      ul: ({ children }) => <ul className="list-disc list-inside text-text-secondary mb-3 space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside text-text-secondary mb-3 space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="text-text-secondary">{children}</li>,
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-4 border-neon pl-4 italic text-text-secondary my-3">{children}</blockquote>
+                      ),
+                      code: ({ children }) => (
+                        <code className="bg-carbon-light px-2 py-1 rounded text-neon text-sm">{children}</code>
+                      ),
+                      pre: ({ children }) => (
+                        <pre className="bg-carbon-light rounded-lg p-4 overflow-x-auto my-3">{children}</pre>
+                      ),
+                      a: ({ href, children }) => (
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-neon hover:text-neon-light underline">{children}</a>
+                      ),
+                    }}
+                  >
+                    {content}
+                  </ReactMarkdown>
                 </div>
               </div>
             ) : isSubscriptionProduct && !access?.has_access && !isOwner ? (
