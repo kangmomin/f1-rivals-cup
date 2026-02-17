@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/f1-rivals-cup/backend/internal/model"
 	"github.com/f1-rivals-cup/backend/internal/repository"
@@ -141,6 +143,53 @@ func (h *SubscriptionHandler) ListMy(c echo.Context) error {
 	})
 }
 
+// ListSellerSales handles GET /api/v1/me/sales
+func (h *SubscriptionHandler) ListSellerSales(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "인증이 필요합니다",
+		})
+	}
+
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	ctx := c.Request().Context()
+	offset := (page - 1) * limit
+
+	sales, total, err := h.subscriptionRepo.GetByProductSeller(ctx, userID, limit, offset)
+	if err != nil {
+		slog.Error("Subscription.ListSellerSales: failed to list sales", "error", err, "user_id", userID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "판매 내역을 불러오는데 실패했습니다",
+		})
+	}
+
+	if sales == nil {
+		sales = []*model.Subscription{}
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"sales":       sales,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": totalPages,
+	})
+}
+
 // CheckAccess handles GET /api/v1/products/:id/access
 // Returns whether the current user has access to the product via subscription permission.
 func (h *SubscriptionHandler) CheckAccess(c echo.Context) error {
@@ -160,6 +209,16 @@ func (h *SubscriptionHandler) CheckAccess(c echo.Context) error {
 		})
 	}
 
+	// Check if seller (always has access to own products)
+	ctx := c.Request().Context()
+	product, err := h.productRepo.GetByID(ctx, productID)
+	if err == nil && product.SellerID == userID {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"has_access":   true,
+			"subscription": nil,
+		})
+	}
+
 	// Check JWT permissions
 	permKey := fmt.Sprintf("product.%s", productID.String())
 	hasAccess := false
@@ -173,7 +232,6 @@ func (h *SubscriptionHandler) CheckAccess(c echo.Context) error {
 	}
 
 	// Also look up the active subscription for additional info
-	ctx := c.Request().Context()
 	subs, err := h.subscriptionRepo.GetActiveByUser(ctx, userID)
 	if err != nil {
 		slog.Error("Subscription.CheckAccess: failed to get subscriptions", "error", err)

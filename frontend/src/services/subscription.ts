@@ -25,6 +25,19 @@ export interface CheckAccessResponse {
   subscription: Subscription | null
 }
 
+export interface SellerSale extends Subscription {
+  buyer_nickname: string
+  product_price: number
+}
+
+export interface SellerSalesResponse {
+  sales: SellerSale[]
+  total: number
+  page: number
+  limit: number
+  total_pages: number
+}
+
 export const subscriptionService = {
   async subscribe(data: SubscribeRequest): Promise<Subscription> {
     const response = await api.post<Subscription>('/subscriptions', data)
@@ -40,6 +53,11 @@ export const subscriptionService = {
 
   async listMy(): Promise<{ subscriptions: Subscription[]; total: number }> {
     const response = await api.get<{ subscriptions: Subscription[]; total: number }>('/me/subscriptions')
+    return response.data
+  },
+
+  async listSellerSales(page = 1, limit = 20): Promise<SellerSalesResponse> {
+    const response = await api.get<SellerSalesResponse>('/me/sales', { params: { page, limit } })
     return response.data
   },
 

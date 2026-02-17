@@ -301,6 +301,7 @@ func main() {
 	meGroup.GET("/participations", participantHandler.ListMyParticipations)
 	meGroup.GET("/products", productHandler.ListMy, custommiddleware.RequirePermission(auth.PermStoreCreate))
 	meGroup.GET("/subscriptions", subscriptionHandler.ListMy)
+	meGroup.GET("/sales", subscriptionHandler.ListSellerSales, custommiddleware.RequirePermission(auth.PermStoreCreate))
 
 	// Initialize and start schedulers
 	ctx, cancel := context.WithCancel(context.Background())

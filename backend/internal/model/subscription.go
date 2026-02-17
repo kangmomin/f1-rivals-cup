@@ -18,8 +18,10 @@ type Subscription struct {
 	CreatedAt     time.Time  `json:"created_at"`
 
 	// Joined fields
-	ProductName string `json:"product_name,omitempty"`
-	LeagueName  string `json:"league_name,omitempty"`
+	ProductName   string `json:"product_name,omitempty"`
+	LeagueName    string `json:"league_name,omitempty"`
+	BuyerNickname string `json:"buyer_nickname,omitempty"`
+	ProductPrice  *int64 `json:"product_price,omitempty"`
 }
 
 type SubscribeRequest struct {

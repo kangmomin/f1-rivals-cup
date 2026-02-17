@@ -209,6 +209,57 @@ func (r *SubscriptionRepository) GetByID(ctx context.Context, id uuid.UUID) (*mo
 	return s, nil
 }
 
+// GetByProductSeller returns all subscriptions (sales) for products owned by the given seller.
+func (r *SubscriptionRepository) GetByProductSeller(ctx context.Context, sellerID uuid.UUID, limit, offset int) ([]*model.Subscription, int, error) {
+	var total int
+	err := r.db.Pool.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM subscriptions s
+		JOIN products p ON s.product_id = p.id
+		WHERE p.seller_id = $1
+	`, sellerID).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := `
+		SELECT s.id, s.user_id, s.product_id, s.league_id, s.transaction_id,
+			s.status, s.started_at, s.expires_at, s.created_at,
+			p.name AS product_name, l.name AS league_name,
+			buyer.nickname AS buyer_nickname, p.price AS product_price
+		FROM subscriptions s
+		JOIN products p ON s.product_id = p.id
+		JOIN leagues l ON s.league_id = l.id
+		JOIN users buyer ON s.user_id = buyer.id
+		WHERE p.seller_id = $1
+		ORDER BY s.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := r.db.Pool.QueryContext(ctx, query, sellerID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var subs []*model.Subscription
+	for rows.Next() {
+		s := &model.Subscription{}
+		var price int64
+		if err := rows.Scan(
+			&s.ID, &s.UserID, &s.ProductID, &s.LeagueID, &s.TransactionID, &s.Status,
+			&s.StartedAt, &s.ExpiresAt, &s.CreatedAt,
+			&s.ProductName, &s.LeagueName,
+			&s.BuyerNickname, &price,
+		); err != nil {
+			return nil, 0, err
+		}
+		s.ProductPrice = &price
+		subs = append(subs, s)
+	}
+
+	return subs, total, nil
+}
+
 // ExpireSubscriptions finds all active subscriptions past their expiry,
 // marks them expired, and removes the corresponding permissions from users.
 func (r *SubscriptionRepository) ExpireSubscriptions(ctx context.Context) (int, error) {
