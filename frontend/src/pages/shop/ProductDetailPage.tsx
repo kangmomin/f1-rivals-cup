@@ -275,7 +275,16 @@ export default function ProductDetailPage() {
             {/* Subscription Access Status & Actions */}
             {isSubscriptionProduct && (
               <div className="mb-6 border-t border-steel pt-6">
-                {access?.has_access && access.subscription ? (
+                {access?.has_access && !access.subscription ? (
+                  <div className="bg-profit/10 border border-profit/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-profit font-bold">접근 권한 있음</span>
+                    </div>
+                  </div>
+                ) : access?.has_access && access.subscription ? (
                   <div className="bg-profit/10 border border-profit/30 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <svg className="w-5 h-5 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24">
