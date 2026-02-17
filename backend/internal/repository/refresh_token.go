@@ -162,6 +162,25 @@ func (r *RefreshTokenRepository) CountByUserID(ctx context.Context, userID uuid.
 	return count, err
 }
 
+// DeleteExcessByUserID keeps the newest maxSessions tokens and deletes the rest
+func (r *RefreshTokenRepository) DeleteExcessByUserID(ctx context.Context, userID uuid.UUID, maxSessions int) (int64, error) {
+	query := `
+		DELETE FROM refresh_tokens
+		WHERE user_id = $1 AND expires_at > NOW()
+		AND id NOT IN (
+			SELECT id FROM refresh_tokens
+			WHERE user_id = $1 AND expires_at > NOW()
+			ORDER BY created_at DESC
+			LIMIT $2
+		)
+	`
+	result, err := r.db.Pool.ExecContext(ctx, query, userID, maxSessions)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 // ErrTokenAlreadyUsed is returned when a refresh token has already been consumed
 var ErrTokenAlreadyUsed = errors.New("refresh token already used or expired")
 

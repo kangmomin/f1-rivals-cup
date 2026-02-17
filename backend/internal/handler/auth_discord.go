@@ -407,6 +407,13 @@ func (h *AuthHandler) loginOAuthUser(c echo.Context, userID uuid.UUID) error {
 				Message: "서버 오류가 발생했습니다",
 			})
 		}
+
+		// Enforce concurrent session limit: remove oldest sessions beyond the max
+		if deleted, err := h.refreshTokenRepo.DeleteExcessByUserID(ctx, user.ID, maxSessionsPerUser); err != nil {
+			slog.Error("loginOAuthUser: failed to enforce session limit", "error", err, "userID", userID)
+		} else if deleted > 0 {
+			slog.Info("loginOAuthUser: removed excess sessions", "userID", userID, "deleted", deleted)
+		}
 	} else {
 		if err := h.userRepo.UpdateRefreshToken(ctx, user.ID, refreshToken); err != nil {
 			slog.Error("loginOAuthUser: failed to update refresh token", "error", err, "userID", userID)

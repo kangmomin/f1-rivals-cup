@@ -17,6 +17,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// maxSessionsPerUser is the maximum number of concurrent sessions allowed per user.
+// Oldest sessions are automatically removed when the limit is exceeded.
+const maxSessionsPerUser = 2
+
 // AuthHandler handles authentication requests
 type AuthHandler struct {
 	userRepo         *repository.UserRepository
@@ -551,6 +555,13 @@ func (h *AuthHandler) Login(c echo.Context) error {
 				Error:   "server_error",
 				Message: "서버 오류가 발생했습니다",
 			})
+		}
+
+		// Enforce concurrent session limit: remove oldest sessions beyond the max
+		if deleted, err := h.refreshTokenRepo.DeleteExcessByUserID(ctx, user.ID, maxSessionsPerUser); err != nil {
+			slog.Error("Auth.Login: failed to enforce session limit", "error", err, "userID", user.ID)
+		} else if deleted > 0 {
+			slog.Info("Auth.Login: removed excess sessions", "userID", user.ID, "deleted", deleted)
 		}
 	} else {
 		// Fallback to legacy single-token storage
