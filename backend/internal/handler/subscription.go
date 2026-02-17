@@ -281,6 +281,14 @@ func (h *SubscriptionHandler) processSubscription(
 		})
 	}
 
+	// Check self-purchase
+	if userID == product.SellerID {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "본인의 상품은 구매할 수 없습니다",
+		})
+	}
+
 	// 4. Get buyer account
 	buyerAccount, err := h.accountRepo.GetByOwner(reqCtx, req.LeagueID, participant.ID, model.OwnerTypeParticipant)
 	if err != nil {
