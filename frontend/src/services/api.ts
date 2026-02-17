@@ -77,7 +77,7 @@ api.interceptors.response.use(
         localStorage.removeItem('accessToken')
         localStorage.removeItem('user')
         // Note: refresh_token cookie is cleared by server or expires
-        window.location.href = '/login'
+        window.location.href = '/login?reason=session_expired'
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

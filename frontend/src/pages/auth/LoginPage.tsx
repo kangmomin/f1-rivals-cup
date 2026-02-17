@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authService } from '../../services/auth'
 import { useAuth } from '../../contexts/AuthContext'
 import DiscordIcon from '../../components/icons/DiscordIcon'
@@ -16,11 +16,14 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
+  const [searchParams] = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [isDiscordLoading, setIsDiscordLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { login } = useAuth()
+
+  const sessionExpired = searchParams.get('reason') === 'session_expired'
 
   const {
     register,
@@ -84,6 +87,13 @@ export default function LoginPage() {
         {/* Form Card */}
         <div className="card">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Session Expired Notice */}
+            {sessionExpired && !error && (
+              <div className="bg-amber-500/10 border border-amber-500 rounded-md p-3 text-amber-500 text-sm">
+                다른 기기에서 로그인하여 현재 세션이 종료되었습니다. 다시 로그인해주세요.
+              </div>
+            )}
+
             {/* Error Message */}
             {error && (
               <div className="bg-loss/10 border border-loss rounded-md p-3 text-loss text-sm">
