@@ -9,6 +9,7 @@ export default function ShopPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [filter, setFilter] = useState<string>('')
 
   const canCreate = hasPermission('store.create')
 
@@ -16,7 +17,7 @@ export default function ShopPage() {
     const fetchProducts = async () => {
       setIsLoading(true)
       try {
-        const response = await productService.list(page, 12)
+        const response = await productService.list(page, 12, filter || undefined)
         setProducts(response.products)
         setTotalPages(response.total_pages)
       } catch (err) {
@@ -26,7 +27,7 @@ export default function ShopPage() {
       }
     }
     fetchProducts()
-  }, [page])
+  }, [page, filter])
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('ko-KR')
@@ -52,6 +53,27 @@ export default function ShopPage() {
               상품 등록
             </Link>
           )}
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-6">
+          {([
+            { value: '', label: '전체' },
+            { value: 'subscription', label: '구독 상품' },
+            { value: 'regular', label: '일반 상품' },
+          ] as const).map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => { setFilter(tab.value); setPage(1) }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === tab.value
+                  ? 'bg-neon text-black'
+                  : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white hover:border-neon/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Products Grid */}

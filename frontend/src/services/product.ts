@@ -57,11 +57,12 @@ export interface ListProductsResponse {
 }
 
 export const productService = {
-  async list(page = 1, limit = 20): Promise<ListProductsResponse> {
+  async list(page = 1, limit = 20, type?: string): Promise<ListProductsResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     })
+    if (type) params.set('type', type)
     const response = await api.get<ListProductsResponse>(`/products?${params}`)
     return response.data
   },

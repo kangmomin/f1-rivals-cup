@@ -38,9 +38,11 @@ func (h *ProductHandler) List(c echo.Context) error {
 		limit = 20
 	}
 
+	productType := c.QueryParam("type") // "subscription", "regular", or "" (all)
+
 	ctx := c.Request().Context()
 
-	products, total, err := h.productRepo.List(ctx, page, limit, "active")
+	products, total, err := h.productRepo.List(ctx, page, limit, "active", productType)
 	if err != nil {
 		slog.Error("Product.List: failed to list products", "error", err)
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{

@@ -162,11 +162,20 @@ func (r *ProductRepository) getOptionsByProductID(ctx context.Context, productID
 }
 
 // List retrieves a paginated list of products
-func (r *ProductRepository) List(ctx context.Context, page, limit int, status string) ([]*model.Product, int, error) {
+func (r *ProductRepository) List(ctx context.Context, page, limit int, status string, productType string) ([]*model.Product, int, error) {
 	offset := (page - 1) * limit
 
+	// Build type filter
+	typeFilter := ""
+	switch productType {
+	case "subscription":
+		typeFilter = " AND subscription_duration_days IS NOT NULL"
+	case "regular":
+		typeFilter = " AND subscription_duration_days IS NULL"
+	}
+
 	// Count total
-	countQuery := `SELECT COUNT(*) FROM products WHERE status = $1`
+	countQuery := `SELECT COUNT(*) FROM products WHERE status = $1` + typeFilter
 	var total int
 	if err := r.db.Pool.QueryRowContext(ctx, countQuery, status).Scan(&total); err != nil {
 		return nil, 0, err
@@ -177,7 +186,7 @@ func (r *ProductRepository) List(ctx context.Context, page, limit int, status st
 		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.subscription_duration_days, p.created_at, p.updated_at, u.nickname
 		FROM products p
 		JOIN users u ON p.seller_id = u.id
-		WHERE p.status = $1
+		WHERE p.status = $1` + typeFilter + `
 		ORDER BY p.created_at DESC
 		LIMIT $2 OFFSET $3
 	`
