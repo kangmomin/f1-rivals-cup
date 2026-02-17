@@ -24,6 +24,7 @@ export default function ProductDetailPage() {
   const [selectedOptionId, setSelectedOptionId] = useState<string>('')
   const [isSubscribing, setIsSubscribing] = useState(false)
   const [subscribeError, setSubscribeError] = useState<string | null>(null)
+  const [content, setContent] = useState<string | null>(null)
 
   const isOwner = user && product && user.id === product.seller_id
   const canManage = isOwner || hasPermission('store.manage')
@@ -54,6 +55,13 @@ export default function ProductDetailPage() {
     if (!id || !isSubscriptionProduct) return
     subscriptionService.checkAccess(id).then(setAccess).catch(() => {})
   }, [id, isSubscriptionProduct])
+
+  // Fetch buyer-only content when authorized
+  useEffect(() => {
+    if (!id) return
+    if (!access?.has_access && !isOwner) return
+    productService.getContent(id).then(res => setContent(res.content)).catch(() => {})
+  }, [id, access?.has_access, isOwner])
 
   const handleDelete = async () => {
     if (!id) return
@@ -321,6 +329,30 @@ export default function ProductDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Buyer-only Content */}
+            {(access?.has_access || isOwner) && content ? (
+              <div className="mb-6 border-t border-steel pt-6">
+                <h2 className="text-sm font-medium text-text-secondary mb-2 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                  </svg>
+                  구매자 전용 콘텐츠
+                </h2>
+                <div className="bg-carbon border border-neon/20 rounded-lg p-4">
+                  <p className="text-white whitespace-pre-wrap leading-relaxed">{content}</p>
+                </div>
+              </div>
+            ) : isSubscriptionProduct && !access?.has_access && !isOwner ? (
+              <div className="mb-6 border-t border-steel pt-6">
+                <div className="bg-carbon border border-steel rounded-lg p-4 flex items-center gap-3 text-text-secondary">
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-sm">구매 후 확인 가능한 콘텐츠입니다</span>
+                </div>
+              </div>
+            ) : null}
 
             {/* Meta */}
             <div className="text-xs text-text-secondary border-t border-steel pt-4">

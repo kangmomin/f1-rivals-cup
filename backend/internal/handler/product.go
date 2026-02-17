@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -16,13 +17,15 @@ import (
 
 // ProductHandler handles product requests
 type ProductHandler struct {
-	productRepo *repository.ProductRepository
+	productRepo      *repository.ProductRepository
+	subscriptionRepo *repository.SubscriptionRepository
 }
 
 // NewProductHandler creates a new ProductHandler
-func NewProductHandler(productRepo *repository.ProductRepository) *ProductHandler {
+func NewProductHandler(productRepo *repository.ProductRepository, subscriptionRepo *repository.SubscriptionRepository) *ProductHandler {
 	return &ProductHandler{
-		productRepo: productRepo,
+		productRepo:      productRepo,
+		subscriptionRepo: subscriptionRepo,
 	}
 }
 
@@ -94,6 +97,9 @@ func (h *ProductHandler) Get(c echo.Context) error {
 		})
 	}
 
+	// Clear content from public endpoint
+	product.Content = ""
+
 	return c.JSON(http.StatusOK, product)
 }
 
@@ -132,6 +138,7 @@ func (h *ProductHandler) Create(c echo.Context) error {
 		ImageURL:                req.ImageURL,
 		Status:                  "active",
 		SubscriptionDurationDays: req.SubscriptionDurationDays,
+		Content:                 req.Content,
 	}
 
 	// Convert option requests to options
@@ -247,6 +254,9 @@ func (h *ProductHandler) Update(c echo.Context) error {
 	}
 	if req.SubscriptionDurationDays != nil {
 		product.SubscriptionDurationDays = *req.SubscriptionDurationDays
+	}
+	if req.Content != nil {
+		product.Content = *req.Content
 	}
 
 	if err := h.productRepo.Update(ctx, product); err != nil {
@@ -447,6 +457,82 @@ func (h *ProductHandler) ManageOptions(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"options": newOptions,
+	})
+}
+
+// GetContent handles GET /api/v1/products/:id/content (requires auth + access)
+func (h *ProductHandler) GetContent(c echo.Context) error {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "잘못된 상품 ID입니다",
+		})
+	}
+
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "인증이 필요합니다",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	// Check if seller (always has access to own products)
+	product, err := h.productRepo.GetByID(ctx, productID)
+	if err != nil {
+		if errors.Is(err, repository.ErrProductNotFound) {
+			return c.JSON(http.StatusNotFound, model.ErrorResponse{
+				Error:   "not_found",
+				Message: "상품을 찾을 수 없습니다",
+			})
+		}
+		slog.Error("Product.GetContent: failed to get product", "error", err, "product_id", productID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "콘텐츠를 불러오는데 실패했습니다",
+		})
+	}
+
+	hasAccess := product.SellerID == userID
+
+	// Check JWT permissions
+	if !hasAccess {
+		permKey := fmt.Sprintf("product.%s", productID.String())
+		if perms, ok := c.Get("permissions").([]string); ok {
+			for _, p := range perms {
+				if p == permKey {
+					hasAccess = true
+					break
+				}
+			}
+		}
+	}
+
+	// Check active subscription
+	if !hasAccess {
+		subs, err := h.subscriptionRepo.GetActiveByUser(ctx, userID)
+		if err == nil {
+			for _, s := range subs {
+				if s.ProductID == productID {
+					hasAccess = true
+					break
+				}
+			}
+		}
+	}
+
+	if !hasAccess {
+		return c.JSON(http.StatusForbidden, model.ErrorResponse{
+			Error:   "forbidden",
+			Message: "이 콘텐츠에 접근할 권한이 없습니다",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"content": product.Content,
 	})
 }
 

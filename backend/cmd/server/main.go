@@ -99,7 +99,7 @@ func main() {
 	commentHandler := handler.NewCommentHandler(commentRepo)
 	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
 	teamChangeHandler := handler.NewTeamChangeHandler(teamChangeRepo, participantRepo, teamRepo, leagueRepo, teamChangeActivityRepo)
-	productHandler := handler.NewProductHandler(productRepo)
+	productHandler := handler.NewProductHandler(productRepo, subscriptionRepo)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionRepo, productRepo, accountRepo, participantRepo)
 
 	// Initialize Echo
@@ -288,6 +288,7 @@ func main() {
 	protectedProductGroup.PUT("/:id", productHandler.Update, custommiddleware.RequirePermission(auth.PermStoreEdit))
 	protectedProductGroup.DELETE("/:id", productHandler.Delete, custommiddleware.RequirePermission(auth.PermStoreDelete))
 	protectedProductGroup.PUT("/:id/options", productHandler.ManageOptions, custommiddleware.RequirePermission(auth.PermStoreEdit))
+	protectedProductGroup.GET("/:id/content", productHandler.GetContent)
 
 	// Protected subscription routes
 	subscriptionGroup := v1.Group("/subscriptions")

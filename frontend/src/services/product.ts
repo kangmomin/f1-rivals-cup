@@ -30,6 +30,7 @@ export interface CreateProductRequest {
   price: number
   image_url?: string
   subscription_duration_days?: number | null
+  content?: string
   options?: CreateProductOptionRequest[]
 }
 
@@ -46,6 +47,7 @@ export interface UpdateProductRequest {
   image_url?: string
   status?: string
   subscription_duration_days?: number | null
+  content?: string
 }
 
 export interface ListProductsResponse {
@@ -97,6 +99,11 @@ export const productService = {
 
   async updateOptions(id: string, options: CreateProductOptionRequest[]): Promise<{ options: ProductOption[] }> {
     const response = await api.put<{ options: ProductOption[] }>(`/products/${id}/options`, { options })
+    return response.data
+  },
+
+  async getContent(id: string): Promise<{ content: string }> {
+    const response = await api.get<{ content: string }>(`/products/${id}/content`)
     return response.data
   },
 }

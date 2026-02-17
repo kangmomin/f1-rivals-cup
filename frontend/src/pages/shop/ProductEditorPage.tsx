@@ -29,6 +29,7 @@ export default function ProductEditorPage() {
   const [status, setStatus] = useState('active')
   const [isSubscription, setIsSubscription] = useState(false)
   const [subscriptionDays, setSubscriptionDays] = useState(30)
+  const [content, setContent] = useState('')
   const [options, setOptions] = useState<OptionField[]>([])
   const [isLoading, setIsLoading] = useState(mode === 'edit')
   const [isSaving, setIsSaving] = useState(false)
@@ -60,6 +61,13 @@ export default function ProductEditorPage() {
               option_value: opt.option_value,
               additional_price: opt.additional_price,
             })))
+          }
+          // Fetch buyer-only content separately (cleared from public endpoint)
+          try {
+            const contentData = await productService.getContent(id)
+            setContent(contentData.content || '')
+          } catch {
+            // Ignore - content may not exist yet
           }
         } catch (err) {
           setError('상품을 불러오는데 실패했습니다')
@@ -123,6 +131,7 @@ export default function ProductEditorPage() {
           price,
           image_url: imageUrl.trim() || undefined,
           subscription_duration_days: isSubscription ? subscriptionDays : null,
+          content: content.trim() || undefined,
           options: optionRequests.length > 0 ? optionRequests : undefined,
         })
         navigate(`/shop/${created.id}`)
@@ -134,6 +143,7 @@ export default function ProductEditorPage() {
           image_url: imageUrl.trim(),
           status,
           subscription_duration_days: isSubscription ? subscriptionDays : null,
+          content: content.trim(),
         })
         // Update options separately
         await productService.updateOptions(id, optionRequests)
@@ -252,6 +262,19 @@ export default function ProductEditorPage() {
                 />
               </div>
             )}
+          </div>
+
+          {/* Buyer-only Content */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">구매자 전용 콘텐츠</label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="구매/구독한 사용자만 볼 수 있는 콘텐츠를 입력하세요 (사용법, 가이드 등)"
+              rows={6}
+              className="w-full bg-carbon-dark border border-steel rounded-lg px-4 py-3 text-white placeholder-text-secondary focus:outline-none focus:border-neon resize-none"
+            />
+            <p className="text-xs text-text-secondary mt-1">이 콘텐츠는 구매자에게만 표시됩니다</p>
           </div>
 
           {/* Status (edit only) */}

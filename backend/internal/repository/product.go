@@ -33,8 +33,8 @@ func (r *ProductRepository) Create(ctx context.Context, product *model.Product) 
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO products (seller_id, name, description, price, image_url, status, subscription_duration_days)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO products (seller_id, name, description, price, image_url, status, subscription_duration_days, content)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -46,6 +46,7 @@ func (r *ProductRepository) Create(ctx context.Context, product *model.Product) 
 		product.ImageURL,
 		product.Status,
 		product.SubscriptionDurationDays,
+		product.Content,
 	).Scan(&product.ID, &product.CreatedAt, &product.UpdatedAt)
 	if err != nil {
 		return err
@@ -77,7 +78,7 @@ func (r *ProductRepository) Create(ctx context.Context, product *model.Product) 
 // GetByID retrieves a product by ID with seller info and options
 func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
 	query := `
-		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.subscription_duration_days, p.created_at, p.updated_at, u.nickname
+		SELECT p.id, p.seller_id, p.name, p.description, p.price, p.image_url, p.status, p.subscription_duration_days, p.content, p.created_at, p.updated_at, u.nickname
 		FROM products p
 		JOIN users u ON p.seller_id = u.id
 		WHERE p.id = $1
@@ -86,6 +87,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.P
 	product := &model.Product{}
 	var imageURL sql.NullString
 	var subDays sql.NullInt64
+	var content sql.NullString
 	err := r.db.Pool.QueryRowContext(ctx, query, id).Scan(
 		&product.ID,
 		&product.SellerID,
@@ -95,6 +97,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.P
 		&imageURL,
 		&product.Status,
 		&subDays,
+		&content,
 		&product.CreatedAt,
 		&product.UpdatedAt,
 		&product.SellerNickname,
@@ -111,6 +114,9 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.P
 	if subDays.Valid {
 		d := int(subDays.Int64)
 		product.SubscriptionDurationDays = &d
+	}
+	if content.Valid {
+		product.Content = content.String
 	}
 
 	// Fetch options
@@ -302,8 +308,8 @@ func (r *ProductRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID
 func (r *ProductRepository) Update(ctx context.Context, product *model.Product) error {
 	query := `
 		UPDATE products
-		SET name = $1, description = $2, price = $3, image_url = $4, status = $5, subscription_duration_days = $6, updated_at = NOW()
-		WHERE id = $7
+		SET name = $1, description = $2, price = $3, image_url = $4, status = $5, subscription_duration_days = $6, content = $7, updated_at = NOW()
+		WHERE id = $8
 	`
 
 	result, err := r.db.Pool.ExecContext(ctx, query,
@@ -313,6 +319,7 @@ func (r *ProductRepository) Update(ctx context.Context, product *model.Product) 
 		product.ImageURL,
 		product.Status,
 		product.SubscriptionDurationDays,
+		product.Content,
 		product.ID,
 	)
 	if err != nil {
@@ -328,6 +335,21 @@ func (r *ProductRepository) Update(ctx context.Context, product *model.Product) 
 	}
 
 	return nil
+}
+
+// GetContentByID retrieves only the content field of a product
+func (r *ProductRepository) GetContentByID(ctx context.Context, id uuid.UUID) (string, error) {
+	query := `SELECT COALESCE(content, '') FROM products WHERE id = $1`
+
+	var content string
+	err := r.db.Pool.QueryRowContext(ctx, query, id).Scan(&content)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrProductNotFound
+		}
+		return "", err
+	}
+	return content, nil
 }
 
 // Delete deletes a product (CASCADE deletes options)

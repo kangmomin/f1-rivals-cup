@@ -16,6 +16,7 @@ type Product struct {
 	ImageURL                 string          `json:"image_url,omitempty"`
 	Status                   string          `json:"status"`
 	SubscriptionDurationDays *int            `json:"subscription_duration_days,omitempty"`
+	Content                  string          `json:"content,omitempty"`
 	CreatedAt                time.Time       `json:"created_at"`
 	UpdatedAt                time.Time       `json:"updated_at"`
 	SellerNickname           string          `json:"seller_nickname,omitempty"`
@@ -39,6 +40,7 @@ type CreateProductRequest struct {
 	Price                    int64                        `json:"price" validate:"min=0"`
 	ImageURL                 string                       `json:"image_url,omitempty"`
 	SubscriptionDurationDays *int                         `json:"subscription_duration_days,omitempty"`
+	Content                  string                       `json:"content,omitempty"`
 	Options                  []CreateProductOptionRequest `json:"options,omitempty"`
 }
 
@@ -57,6 +59,7 @@ type UpdateProductRequest struct {
 	ImageURL                 *string `json:"image_url,omitempty"`
 	Status                   *string `json:"status,omitempty"`
 	SubscriptionDurationDays **int   `json:"subscription_duration_days,omitempty"`
+	Content                  *string `json:"content,omitempty"`
 }
 
 // ListProductsResponse represents the response for listing products
