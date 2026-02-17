@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } from '../../services/participant'
 import { authService, OAuthLinkStatus } from '../../services/auth'
+import { subscriptionService, Subscription } from '../../services/subscription'
 import DiscordIcon from '../../components/icons/DiscordIcon'
 
 const PARTICIPANT_STATUS_LABELS: Record<string, string> = {
@@ -21,6 +22,7 @@ export default function MyPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [participations, setParticipations] = useState<LeagueParticipant[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [linkedAccounts, setLinkedAccounts] = useState<OAuthLinkStatus[]>([])
   const [isLinkLoading, setIsLinkLoading] = useState(false)
 
@@ -89,6 +91,9 @@ export default function MyPage() {
     fetchParticipations()
     if (isAuthenticated) {
       fetchLinkedAccounts()
+      subscriptionService.listMy().then(data => {
+        setSubscriptions(data.subscriptions || [])
+      }).catch(() => {})
     }
   }, [isAuthenticated])
 
@@ -182,6 +187,35 @@ export default function MyPage() {
             })()}
           </div>
         </div>
+
+        {/* Subscriptions Section */}
+        {subscriptions.length > 0 && (
+          <div className="bg-carbon-dark border border-steel rounded-xl overflow-hidden mb-8">
+            <div className="px-6 py-4 border-b border-steel">
+              <h2 className="text-lg font-bold text-white">내 구독</h2>
+            </div>
+            <div className="divide-y divide-steel">
+              {subscriptions.map((sub) => (
+                <Link
+                  key={sub.id}
+                  to={`/shop/${sub.product_id}`}
+                  className="px-6 py-4 flex items-center justify-between hover:bg-steel/10 transition-colors block"
+                >
+                  <div>
+                    <h3 className="text-white font-medium">{sub.product_name || '상품'}</h3>
+                    <p className="text-sm text-text-secondary">
+                      {sub.league_name && <span className="mr-3">{sub.league_name}</span>}
+                      만료: {formatDate(sub.expires_at)}
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 bg-profit/10 text-profit border border-profit/30 rounded-full text-xs font-medium">
+                    구독 중
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Participations Section */}
         <div className="bg-carbon-dark border border-steel rounded-xl overflow-hidden">

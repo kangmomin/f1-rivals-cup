@@ -79,7 +79,7 @@ export default function ShopPage() {
                   className="group bg-carbon-dark border border-steel rounded-xl overflow-hidden hover:border-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-neon/10"
                 >
                   {/* Image */}
-                  <div className="h-48 bg-gradient-to-br from-carbon-light to-steel/20 flex items-center justify-center">
+                  <div className="relative h-48 bg-gradient-to-br from-carbon-light to-steel/20 flex items-center justify-center">
                     {product.image_url ? (
                       <img
                         src={product.image_url}
@@ -90,6 +90,11 @@ export default function ShopPage() {
                       <svg className="w-16 h-16 text-steel" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                       </svg>
+                    )}
+                    {product.subscription_duration_days && (
+                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-neon/90 text-black text-xs font-bold rounded-full">
+                        {product.subscription_duration_days}일 구독
+                      </span>
                     )}
                   </div>
 

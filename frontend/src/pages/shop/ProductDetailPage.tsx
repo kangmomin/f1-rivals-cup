@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { productService, Product } from '../../services/product'
+import { subscriptionService, CheckAccessResponse } from '../../services/subscription'
+import { participantService, LeagueParticipant } from '../../services/participant'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, hasPermission } = useAuth()
+  const { user, isAuthenticated, hasPermission } = useAuth()
 
   const [product, setProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -14,8 +16,18 @@ export default function ProductDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  // Subscription state
+  const [access, setAccess] = useState<CheckAccessResponse | null>(null)
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false)
+  const [participations, setParticipations] = useState<LeagueParticipant[]>([])
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string>('')
+  const [selectedOptionId, setSelectedOptionId] = useState<string>('')
+  const [isSubscribing, setIsSubscribing] = useState(false)
+  const [subscribeError, setSubscribeError] = useState<string | null>(null)
+
   const isOwner = user && product && user.id === product.seller_id
   const canManage = isOwner || hasPermission('store.manage')
+  const isSubscriptionProduct = product?.subscription_duration_days && product.subscription_duration_days > 0
 
   useEffect(() => {
     if (!id) return
@@ -37,6 +49,12 @@ export default function ProductDetailPage() {
     fetchProduct()
   }, [id])
 
+  // Check access for subscription products
+  useEffect(() => {
+    if (!id || !isSubscriptionProduct) return
+    subscriptionService.checkAccess(id).then(setAccess).catch(() => {})
+  }, [id, isSubscriptionProduct])
+
   const handleDelete = async () => {
     if (!id) return
     setIsDeleting(true)
@@ -51,6 +69,76 @@ export default function ProductDetailPage() {
     }
   }
 
+  const handleSubscribeClick = async () => {
+    if (!isAuthenticated) {
+      navigate('/login')
+      return
+    }
+
+    setSubscribeError(null)
+    setSelectedLeagueId('')
+    setSelectedOptionId('')
+
+    try {
+      const data = await participantService.getMyParticipations()
+      const approved = data.participants.filter(p => p.status === 'approved')
+      setParticipations(approved)
+
+      if (approved.length === 0) {
+        setSubscribeError('승인된 리그 참가 내역이 없습니다. 리그에 먼저 참가해주세요.')
+      }
+    } catch {
+      setSubscribeError('참가 정보를 불러오는데 실패했습니다')
+    }
+
+    setShowSubscribeModal(true)
+  }
+
+  const handleSubscribe = async () => {
+    if (!id || !selectedLeagueId) return
+
+    setIsSubscribing(true)
+    setSubscribeError(null)
+
+    try {
+      await subscriptionService.subscribe({
+        product_id: id,
+        league_id: selectedLeagueId,
+        option_id: selectedOptionId || undefined,
+      })
+
+      // Refresh access state
+      const newAccess = await subscriptionService.checkAccess(id)
+      setAccess(newAccess)
+      setShowSubscribeModal(false)
+    } catch (err: any) {
+      const message = err.response?.data?.message || '구독에 실패했습니다'
+      setSubscribeError(message)
+    } finally {
+      setIsSubscribing(false)
+    }
+  }
+
+  const handleRenew = async () => {
+    if (!access?.subscription) return
+
+    setIsSubscribing(true)
+    setSubscribeError(null)
+
+    try {
+      await subscriptionService.renew(access.subscription.id)
+      if (id) {
+        const newAccess = await subscriptionService.checkAccess(id)
+        setAccess(newAccess)
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || '갱신에 실패했습니다'
+      setSubscribeError(message)
+    } finally {
+      setIsSubscribing(false)
+    }
+  }
+
   const formatPrice = (price: number) => {
     return price.toLocaleString('ko-KR')
   }
@@ -60,6 +148,16 @@ export default function ProductDetailPage() {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+    })
+  }
+
+  const formatDateTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     })
   }
 
@@ -97,7 +195,7 @@ export default function ProductDetailPage() {
 
         <div className="bg-carbon-dark border border-steel rounded-xl overflow-hidden mt-4">
           {/* Image */}
-          <div className="h-64 md:h-80 bg-gradient-to-br from-carbon-light to-steel/20 flex items-center justify-center">
+          <div className="relative h-64 md:h-80 bg-gradient-to-br from-carbon-light to-steel/20 flex items-center justify-center">
             {product.image_url ? (
               <img
                 src={product.image_url}
@@ -108,6 +206,11 @@ export default function ProductDetailPage() {
               <svg className="w-24 h-24 text-steel" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
+            )}
+            {isSubscriptionProduct && (
+              <span className="absolute top-4 left-4 px-3 py-1.5 bg-neon/90 text-black text-sm font-bold rounded-full">
+                {product.subscription_duration_days}일 구독
+              </span>
             )}
           </div>
 
@@ -130,6 +233,11 @@ export default function ProductDetailPage() {
             <div className="text-3xl font-bold text-neon mb-6">
               {formatPrice(product.price)}
               <span className="text-lg font-normal text-text-secondary ml-1">원</span>
+              {isSubscriptionProduct && (
+                <span className="text-sm font-normal text-text-secondary ml-2">
+                  / {product.subscription_duration_days}일
+                </span>
+              )}
             </div>
 
             {product.description && (
@@ -161,6 +269,47 @@ export default function ProductDetailPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Subscription Access Status & Actions */}
+            {isSubscriptionProduct && (
+              <div className="mb-6 border-t border-steel pt-6">
+                {access?.has_access && access.subscription ? (
+                  <div className="bg-profit/10 border border-profit/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg className="w-5 h-5 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-profit font-bold">구독 중</span>
+                    </div>
+                    <p className="text-sm text-text-secondary mb-3">
+                      만료일: {formatDateTime(access.subscription.expires_at)}
+                    </p>
+                    {subscribeError && (
+                      <p className="text-sm text-loss mb-3">{subscribeError}</p>
+                    )}
+                    <button
+                      onClick={handleRenew}
+                      disabled={isSubscribing}
+                      className="btn-primary px-5 py-2 text-sm disabled:opacity-50"
+                    >
+                      {isSubscribing ? '처리 중...' : `구독 갱신 (${formatPrice(product.price)}원)`}
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    {subscribeError && !showSubscribeModal && (
+                      <p className="text-sm text-loss mb-3">{subscribeError}</p>
+                    )}
+                    <button
+                      onClick={handleSubscribeClick}
+                      className="w-full btn-primary py-3 text-lg font-bold"
+                    >
+                      구독하기 ({formatPrice(product.price)}원 / {product.subscription_duration_days}일)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -217,6 +366,101 @@ export default function ProductDetailPage() {
                   className="px-4 py-2 bg-loss text-white rounded-lg font-medium hover:bg-loss/80 transition-colors disabled:opacity-50"
                 >
                   {isDeleting ? '삭제 중...' : '삭제'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscribe Modal */}
+        {showSubscribeModal && product && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-carbon-dark border border-steel rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-lg font-bold text-white mb-1">구독 구매</h3>
+              <p className="text-sm text-text-secondary mb-5">
+                {product.name} — {formatPrice(product.price)}원 / {product.subscription_duration_days}일
+              </p>
+
+              {subscribeError && (
+                <div className="bg-loss/10 border border-loss/30 rounded-md p-3 text-loss text-sm mb-4">
+                  {subscribeError}
+                </div>
+              )}
+
+              {/* League Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-white mb-2">결제 리그 선택</label>
+                {participations.length === 0 ? (
+                  <p className="text-sm text-text-secondary">승인된 리그가 없습니다</p>
+                ) : (
+                  <select
+                    value={selectedLeagueId}
+                    onChange={(e) => setSelectedLeagueId(e.target.value)}
+                    className="w-full bg-carbon border border-steel rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon"
+                  >
+                    <option value="">리그를 선택하세요</option>
+                    {participations.map((p) => (
+                      <option key={p.league_id} value={p.league_id}>
+                        {p.league_name || p.league_id}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Option Selection */}
+              {product.options && product.options.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-white mb-2">옵션 선택 (선택사항)</label>
+                  <select
+                    value={selectedOptionId}
+                    onChange={(e) => setSelectedOptionId(e.target.value)}
+                    className="w-full bg-carbon border border-steel rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon"
+                  >
+                    <option value="">옵션 없음</option>
+                    {product.options.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.option_name}: {opt.option_value}
+                        {opt.additional_price !== 0
+                          ? ` (${opt.additional_price > 0 ? '+' : ''}${formatPrice(opt.additional_price)}원)`
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Total Price */}
+              {selectedLeagueId && (
+                <div className="bg-carbon border border-steel rounded-lg p-4 mb-5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-text-secondary">결제 금액</span>
+                    <span className="text-neon font-bold text-lg">
+                      {formatPrice(
+                        product.price +
+                        (selectedOptionId
+                          ? (product.options?.find(o => o.id === selectedOptionId)?.additional_price || 0)
+                          : 0)
+                      )}원
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 justify-end">
+                <button
+                  onClick={() => setShowSubscribeModal(false)}
+                  disabled={isSubscribing}
+                  className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSubscribe}
+                  disabled={isSubscribing || !selectedLeagueId}
+                  className="btn-primary px-5 py-2 disabled:opacity-50"
+                >
+                  {isSubscribing ? '처리 중...' : '구독하기'}
                 </button>
               </div>
             </div>

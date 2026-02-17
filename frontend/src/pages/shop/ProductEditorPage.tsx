@@ -27,6 +27,8 @@ export default function ProductEditorPage() {
   const [price, setPrice] = useState(0)
   const [imageUrl, setImageUrl] = useState('')
   const [status, setStatus] = useState('active')
+  const [isSubscription, setIsSubscription] = useState(false)
+  const [subscriptionDays, setSubscriptionDays] = useState(30)
   const [options, setOptions] = useState<OptionField[]>([])
   const [isLoading, setIsLoading] = useState(mode === 'edit')
   const [isSaving, setIsSaving] = useState(false)
@@ -47,6 +49,10 @@ export default function ProductEditorPage() {
           setPrice(data.price)
           setImageUrl(data.image_url || '')
           setStatus(data.status)
+          if (data.subscription_duration_days) {
+            setIsSubscription(true)
+            setSubscriptionDays(data.subscription_duration_days)
+          }
           if (data.options && data.options.length > 0) {
             setOptions(data.options.map(opt => ({
               key: `opt-${++optionKeyCounter}`,
@@ -116,6 +122,7 @@ export default function ProductEditorPage() {
           description: description.trim(),
           price,
           image_url: imageUrl.trim() || undefined,
+          subscription_duration_days: isSubscription ? subscriptionDays : null,
           options: optionRequests.length > 0 ? optionRequests : undefined,
         })
         navigate(`/shop/${created.id}`)
@@ -126,6 +133,7 @@ export default function ProductEditorPage() {
           price,
           image_url: imageUrl.trim(),
           status,
+          subscription_duration_days: isSubscription ? subscriptionDays : null,
         })
         // Update options separately
         await productService.updateOptions(id, optionRequests)
@@ -219,6 +227,31 @@ export default function ProductEditorPage() {
               placeholder="https://example.com/image.jpg"
               className="w-full bg-carbon-dark border border-steel rounded-lg px-4 py-3 text-white placeholder-text-secondary focus:outline-none focus:border-neon"
             />
+          </div>
+
+          {/* Subscription */}
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSubscription}
+                onChange={(e) => setIsSubscription(e.target.checked)}
+                className="w-4 h-4 accent-neon"
+              />
+              <span className="text-sm font-medium text-white">구독 상품</span>
+            </label>
+            {isSubscription && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-text-secondary mb-2">구독 기간 (일)</label>
+                <input
+                  type="number"
+                  value={subscriptionDays}
+                  onChange={(e) => setSubscriptionDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  min={1}
+                  className="w-full bg-carbon-dark border border-steel rounded-lg px-4 py-3 text-white placeholder-text-secondary focus:outline-none focus:border-neon"
+                />
+              </div>
+            )}
           </div>
 
           {/* Status (edit only) */}

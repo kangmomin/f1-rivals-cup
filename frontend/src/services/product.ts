@@ -9,6 +9,7 @@ export interface Product {
   price: number
   image_url: string
   status: string
+  subscription_duration_days?: number | null
   created_at: string
   updated_at: string
   options: ProductOption[]
@@ -28,6 +29,7 @@ export interface CreateProductRequest {
   description: string
   price: number
   image_url?: string
+  subscription_duration_days?: number | null
   options?: CreateProductOptionRequest[]
 }
 
@@ -43,6 +45,7 @@ export interface UpdateProductRequest {
   price?: number
   image_url?: string
   status?: string
+  subscription_duration_days?: number | null
 }
 
 export interface ListProductsResponse {
