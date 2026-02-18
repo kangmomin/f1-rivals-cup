@@ -27,13 +27,15 @@ func NewSubscriptionRepository(db *database.DB) *SubscriptionRepository {
 }
 
 // Subscribe creates or extends a subscription within a single DB transaction.
-// It handles: balance deduction, seller payment, transaction record, subscription upsert, and permission grant.
+// It handles: balance deduction, seller payment, transaction record, subscription upsert, permission grant, and optional coupon usage.
 func (r *SubscriptionRepository) Subscribe(
 	ctx context.Context,
 	userID, productID, leagueID, buyerAccountID, sellerAccountID uuid.UUID,
 	totalPrice int64,
 	durationDays int,
 	description string,
+	couponID *uuid.UUID,
+	couponRepo *CouponRepository,
 ) (*model.Subscription, error) {
 	tx, err := r.db.Pool.BeginTx(ctx, nil)
 	if err != nil {
@@ -137,6 +139,13 @@ func (r *SubscriptionRepository) Subscribe(
 		}
 	} else {
 		return nil, err
+	}
+
+	// Record coupon usage if applicable
+	if couponID != nil && couponRepo != nil {
+		if err := couponRepo.RecordUsage(ctx, tx, *couponID, userID, sub.ID); err != nil {
+			return nil, fmt.Errorf("record coupon usage: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

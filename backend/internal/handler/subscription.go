@@ -19,6 +19,7 @@ type SubscriptionHandler struct {
 	productRepo      *repository.ProductRepository
 	accountRepo      *repository.AccountRepository
 	participantRepo  *repository.ParticipantRepository
+	couponRepo       *repository.CouponRepository
 }
 
 func NewSubscriptionHandler(
@@ -26,12 +27,14 @@ func NewSubscriptionHandler(
 	productRepo *repository.ProductRepository,
 	accountRepo *repository.AccountRepository,
 	participantRepo *repository.ParticipantRepository,
+	couponRepo *repository.CouponRepository,
 ) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		subscriptionRepo: subscriptionRepo,
 		productRepo:      productRepo,
 		accountRepo:      accountRepo,
 		participantRepo:  participantRepo,
+		couponRepo:       couponRepo,
 	}
 }
 
@@ -365,6 +368,36 @@ func (h *SubscriptionHandler) processSubscription(
 		}
 	}
 
+	// 2.5. Apply coupon discount
+	var couponID *uuid.UUID
+	if req.CouponCode != nil && *req.CouponCode != "" {
+		coupon, err := h.couponRepo.GetByCodeAndProduct(reqCtx, *req.CouponCode, product.ID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_coupon",
+				Message: "유효하지 않은 쿠폰 코드입니다",
+			})
+		}
+		if err := repository.ValidateCoupon(coupon); err != nil {
+			msg := "유효하지 않은 쿠폰입니다"
+			if errors.Is(err, repository.ErrCouponExpired) {
+				msg = "만료된 쿠폰입니다"
+			} else if errors.Is(err, repository.ErrCouponMaxUsed) {
+				msg = "사용 횟수가 초과된 쿠폰입니다"
+			}
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+				Error:   "invalid_coupon",
+				Message: msg,
+			})
+		}
+		discount := repository.CalculateDiscount(coupon, totalPrice)
+		totalPrice -= discount
+		if totalPrice < 0 {
+			totalPrice = 0
+		}
+		couponID = &coupon.ID
+	}
+
 	// 3. Get buyer participant (must be approved)
 	participant, err := h.participantRepo.GetByLeagueAndUser(reqCtx, req.LeagueID, userID)
 	if err != nil {
@@ -459,6 +492,7 @@ func (h *SubscriptionHandler) processSubscription(
 		totalPrice,
 		*product.SubscriptionDurationDays,
 		desc,
+		couponID, h.couponRepo,
 	)
 	if err != nil {
 		if errors.Is(err, repository.ErrInsufficientBalance) {

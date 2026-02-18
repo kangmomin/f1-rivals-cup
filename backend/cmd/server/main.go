@@ -65,6 +65,7 @@ func main() {
 	transactionRepo := repository.NewTransactionRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	couponRepo := repository.NewCouponRepository(db)
 
 	// Initialize OAuth repository
 	oauthRepo := repository.NewOAuthAccountRepository(db)
@@ -100,7 +101,8 @@ func main() {
 	financeHandler := handler.NewFinanceHandler(accountRepo, transactionRepo, leagueRepo, participantRepo, teamRepo)
 	teamChangeHandler := handler.NewTeamChangeHandler(teamChangeRepo, participantRepo, teamRepo, leagueRepo, teamChangeActivityRepo)
 	productHandler := handler.NewProductHandler(productRepo, subscriptionRepo)
-	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionRepo, productRepo, accountRepo, participantRepo)
+	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionRepo, productRepo, accountRepo, participantRepo, couponRepo)
+	couponHandler := handler.NewCouponHandler(couponRepo, productRepo)
 
 	// Initialize Echo
 	e := echo.New()
@@ -289,6 +291,14 @@ func main() {
 	protectedProductGroup.DELETE("/:id", productHandler.Delete, custommiddleware.RequirePermission(auth.PermStoreDelete))
 	protectedProductGroup.PUT("/:id/options", productHandler.ManageOptions, custommiddleware.RequirePermission(auth.PermStoreEdit))
 	protectedProductGroup.GET("/:id/content", productHandler.GetContent)
+	protectedProductGroup.POST("/:id/coupons", couponHandler.Create, custommiddleware.RequirePermission(auth.PermStoreCreate))
+	protectedProductGroup.GET("/:id/coupons", couponHandler.List, custommiddleware.RequirePermission(auth.PermStoreCreate))
+
+	// Coupon routes (protected)
+	couponGroup := v1.Group("/coupons")
+	couponGroup.Use(authMiddleware)
+	couponGroup.DELETE("/:id", couponHandler.Delete)
+	couponGroup.POST("/validate", couponHandler.Validate)
 
 	// Protected subscription routes
 	subscriptionGroup := v1.Group("/subscriptions")
@@ -304,6 +314,7 @@ func main() {
 	meGroup.GET("/subscriptions", subscriptionHandler.ListMy)
 	meGroup.GET("/orders", subscriptionHandler.ListMyOrders)
 	meGroup.GET("/sales", subscriptionHandler.ListSellerSales, custommiddleware.RequirePermission(auth.PermStoreCreate))
+	meGroup.GET("/coupons", couponHandler.ListMy, custommiddleware.RequirePermission(auth.PermStoreCreate))
 
 	// Initialize and start schedulers
 	ctx, cancel := context.WithCancel(context.Background())

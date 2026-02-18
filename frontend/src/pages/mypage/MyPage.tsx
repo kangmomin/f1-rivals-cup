@@ -5,6 +5,7 @@ import { participantService, LeagueParticipant, ParticipantRole, ROLE_LABELS } f
 import { authService, OAuthLinkStatus } from '../../services/auth'
 import { subscriptionService, Subscription, SellerSale } from '../../services/subscription'
 import { productService, Product } from '../../services/product'
+import { couponService, Coupon, CreateCouponRequest } from '../../services/coupon'
 import DiscordIcon from '../../components/icons/DiscordIcon'
 
 const PARTICIPANT_STATUS_LABELS: Record<string, string> = {
@@ -31,7 +32,7 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-loss/10 text-loss border border-loss/30',
 }
 
-type Tab = 'profile' | 'orders' | 'products' | 'sales'
+type Tab = 'profile' | 'orders' | 'products' | 'coupons' | 'sales'
 
 export default function MyPage() {
   const { user, isAuthenticated, isLoading: authLoading, hasPermission } = useAuth()
@@ -64,6 +65,23 @@ export default function MyPage() {
   const [salesLoading, setSalesLoading] = useState(false)
   const [salesPage, setSalesPage] = useState(1)
   const [salesTotalPages, setSalesTotalPages] = useState(1)
+
+  // Coupons state
+  const [coupons, setCoupons] = useState<Coupon[]>([])
+  const [couponsLoading, setCouponsLoading] = useState(false)
+  const [couponsPage, setCouponsPage] = useState(1)
+  const [couponsTotalPages, setCouponsTotalPages] = useState(1)
+  const [showCouponForm, setShowCouponForm] = useState(false)
+  const [couponForm, setCouponForm] = useState<CreateCouponRequest & { product_id: string }>({
+    product_id: '',
+    discount_type: 'fixed',
+    discount_value: 0,
+    max_uses: 0,
+    expires_at: '',
+  })
+  const [couponCreating, setCouponCreating] = useState(false)
+  const [sellerProducts, setSellerProducts] = useState<Product[]>([])
+  const [sellerProductsLoaded, setSellerProductsLoaded] = useState(false)
 
   // Profile handlers
   const handleDeleteParticipation = async (leagueId: string, e: React.MouseEvent) => {
@@ -195,6 +213,77 @@ export default function MyPage() {
     fetchSales()
   }, [activeTab, salesPage, canSell])
 
+  // Coupons lazy load
+  useEffect(() => {
+    if (activeTab !== 'coupons' || !canSell) return
+
+    const fetchCoupons = async () => {
+      setCouponsLoading(true)
+      try {
+        const response = await couponService.listMy(couponsPage, 20)
+        setCoupons(response.coupons)
+        setCouponsTotalPages(response.total_pages)
+      } catch (err) {
+        console.error('Failed to load coupons:', err)
+      } finally {
+        setCouponsLoading(false)
+      }
+    }
+    fetchCoupons()
+
+    // Load seller products for coupon creation form
+    if (!sellerProductsLoaded) {
+      productService.listMy(1, 100).then(res => {
+        setSellerProducts(res.products)
+        setSellerProductsLoaded(true)
+      }).catch(() => {})
+    }
+  }, [activeTab, couponsPage, canSell, sellerProductsLoaded])
+
+  const handleDeleteCoupon = async (id: string) => {
+    if (!confirm('정말 이 쿠폰을 삭제하시겠습니까?')) return
+    try {
+      await couponService.delete(id)
+      setCoupons(coupons.filter(c => c.id !== id))
+    } catch (err: any) {
+      alert(err.response?.data?.message || '삭제에 실패했습니다')
+    }
+  }
+
+  const handleCreateCoupon = async () => {
+    if (!couponForm.product_id) {
+      alert('상품을 선택해주세요')
+      return
+    }
+    if (couponForm.discount_value < 1) {
+      alert('할인 값은 1 이상이어야 합니다')
+      return
+    }
+    if (!couponForm.expires_at) {
+      alert('만료일을 입력해주세요')
+      return
+    }
+
+    setCouponCreating(true)
+    try {
+      const { product_id, ...data } = couponForm
+      await couponService.create(product_id, {
+        ...data,
+        expires_at: new Date(data.expires_at).toISOString(),
+      })
+      setShowCouponForm(false)
+      setCouponForm({ product_id: '', discount_type: 'fixed', discount_value: 0, max_uses: 0, expires_at: '' })
+      // Refresh list
+      const response = await couponService.listMy(couponsPage, 20)
+      setCoupons(response.coupons)
+      setCouponsTotalPages(response.total_pages)
+    } catch (err: any) {
+      alert(err.response?.data?.message || '쿠폰 생성에 실패했습니다')
+    } finally {
+      setCouponCreating(false)
+    }
+  }
+
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('정말 이 상품을 삭제하시겠습니까?')) return
     try {
@@ -245,6 +334,7 @@ export default function MyPage() {
     { value: 'profile', label: '프로필', show: true },
     { value: 'orders', label: '주문 내역', show: true },
     { value: 'products', label: '상품 관리', show: canSell },
+    { value: 'coupons', label: '쿠폰 관리', show: canSell },
     { value: 'sales', label: '판매 내역', show: canSell },
   ]
 
@@ -649,6 +739,209 @@ export default function MyPage() {
                     <button
                       onClick={() => setProductsPage(p => Math.min(productsTotalPages, p + 1))}
                       disabled={productsPage === productsTotalPages}
+                      className="px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-neon/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      다음
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Coupons Tab */}
+        {activeTab === 'coupons' && canSell && (
+          <>
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => setShowCouponForm(!showCouponForm)}
+                className="btn-primary px-5 py-2.5 flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                쿠폰 생성
+              </button>
+            </div>
+
+            {/* Coupon Creation Form */}
+            {showCouponForm && (
+              <div className="bg-carbon-dark border border-neon/30 rounded-xl p-6 mb-6">
+                <h3 className="text-lg font-bold text-white mb-4">새 쿠폰 생성</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">상품 선택</label>
+                    <select
+                      value={couponForm.product_id}
+                      onChange={(e) => setCouponForm({ ...couponForm, product_id: e.target.value })}
+                      className="w-full bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
+                    >
+                      <option value="">상품을 선택하세요</option>
+                      {sellerProducts.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">쿠폰 코드 (미입력 시 자동생성)</label>
+                    <input
+                      type="text"
+                      value={couponForm.code || ''}
+                      onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value })}
+                      placeholder="SUMMER2026"
+                      className="w-full bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">할인 타입</label>
+                    <select
+                      value={couponForm.discount_type}
+                      onChange={(e) => setCouponForm({ ...couponForm, discount_type: e.target.value as 'fixed' | 'percentage' })}
+                      className="w-full bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
+                    >
+                      <option value="fixed">정액 할인 (원)</option>
+                      <option value="percentage">정률 할인 (%)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
+                      할인 값 {couponForm.discount_type === 'fixed' ? '(원)' : '(%)'}
+                    </label>
+                    <input
+                      type="number"
+                      value={couponForm.discount_value || ''}
+                      onChange={(e) => setCouponForm({ ...couponForm, discount_value: parseInt(e.target.value) || 0 })}
+                      min={1}
+                      max={couponForm.discount_type === 'percentage' ? 100 : undefined}
+                      className="w-full bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">최대 사용 횟수 (0 = 무제한)</label>
+                    <input
+                      type="number"
+                      value={couponForm.max_uses}
+                      onChange={(e) => setCouponForm({ ...couponForm, max_uses: parseInt(e.target.value) || 0 })}
+                      min={0}
+                      className="w-full bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">만료일</label>
+                    <input
+                      type="datetime-local"
+                      value={couponForm.expires_at}
+                      onChange={(e) => setCouponForm({ ...couponForm, expires_at: e.target.value })}
+                      className="w-full bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-4 justify-end">
+                  <button
+                    onClick={() => setShowCouponForm(false)}
+                    className="px-4 py-2 bg-steel hover:bg-steel/80 text-white rounded-lg font-medium transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleCreateCoupon}
+                    disabled={couponCreating}
+                    className="btn-primary px-5 py-2 disabled:opacity-50"
+                  >
+                    {couponCreating ? '생성 중...' : '생성'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {couponsLoading ? (
+              <div className="text-center py-20">
+                <p className="text-text-secondary">로딩 중...</p>
+              </div>
+            ) : coupons.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-text-secondary text-lg">생성된 쿠폰이 없습니다</p>
+              </div>
+            ) : (
+              <>
+                <div className="bg-carbon-dark border border-steel rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-steel">
+                          <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">코드</th>
+                          <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">상품명</th>
+                          <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">할인</th>
+                          <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">사용</th>
+                          <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">만료일</th>
+                          <th className="text-right text-sm font-medium text-text-secondary px-6 py-4">관리</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {coupons.map((coupon) => (
+                          <tr key={coupon.id} className="border-b border-steel/50 hover:bg-carbon-light/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <span className="text-neon font-mono font-medium">{coupon.code}</span>
+                            </td>
+                            <td className="px-6 py-4 text-white">
+                              {coupon.product_name}
+                            </td>
+                            <td className="px-6 py-4 text-white font-medium">
+                              {coupon.discount_type === 'fixed'
+                                ? `${formatPrice(coupon.discount_value)}원`
+                                : `${coupon.discount_value}%`}
+                            </td>
+                            <td className="px-6 py-4 text-text-secondary">
+                              {coupon.used_count}{coupon.max_uses > 0 ? ` / ${coupon.max_uses}` : ' / 무제한'}
+                            </td>
+                            <td className="px-6 py-4 text-text-secondary text-sm">
+                              <span className={new Date(coupon.expires_at) < new Date() ? 'text-loss' : ''}>
+                                {formatDate(coupon.expires_at)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-end">
+                                <button
+                                  onClick={() => handleDeleteCoupon(coupon.id)}
+                                  className="px-3 py-1.5 text-sm text-loss hover:bg-loss/10 border border-loss/30 rounded-lg transition-colors"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {couponsTotalPages > 1 && (
+                  <div className="flex justify-center mt-8 gap-2">
+                    <button
+                      onClick={() => setCouponsPage(p => Math.max(1, p - 1))}
+                      disabled={couponsPage === 1}
+                      className="px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-neon/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      이전
+                    </button>
+                    {Array.from({ length: couponsTotalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setCouponsPage(p)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          p === couponsPage
+                            ? 'bg-neon text-black'
+                            : 'bg-carbon-dark border border-steel text-text-secondary hover:text-white hover:border-neon/50'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCouponsPage(p => Math.min(couponsTotalPages, p + 1))}
+                      disabled={couponsPage === couponsTotalPages}
                       className="px-4 py-2 bg-carbon-dark border border-steel rounded-lg text-text-secondary hover:text-white hover:border-neon/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       다음

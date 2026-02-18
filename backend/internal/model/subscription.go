@@ -25,7 +25,8 @@ type Subscription struct {
 }
 
 type SubscribeRequest struct {
-	ProductID uuid.UUID  `json:"product_id" validate:"required"`
-	LeagueID  uuid.UUID  `json:"league_id" validate:"required"`
-	OptionID  *uuid.UUID `json:"option_id,omitempty"`
+	ProductID  uuid.UUID  `json:"product_id" validate:"required"`
+	LeagueID   uuid.UUID  `json:"league_id" validate:"required"`
+	OptionID   *uuid.UUID `json:"option_id,omitempty"`
+	CouponCode *string    `json:"coupon_code,omitempty"`
 }

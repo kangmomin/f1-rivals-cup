@@ -19,6 +19,7 @@ export interface SubscribeRequest {
   product_id: string
   league_id: string
   option_id?: string
+  coupon_code?: string
 }
 
 export interface CheckAccessResponse {

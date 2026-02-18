@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import { productService, Product } from '../../services/product'
 import { subscriptionService, CheckAccessResponse } from '../../services/subscription'
 import { participantService, LeagueParticipant } from '../../services/participant'
+import { couponService } from '../../services/coupon'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function ProductDetailPage() {
@@ -26,6 +27,11 @@ export default function ProductDetailPage() {
   const [isSubscribing, setIsSubscribing] = useState(false)
   const [subscribeError, setSubscribeError] = useState<string | null>(null)
   const [content, setContent] = useState<string | null>(null)
+  const [couponCode, setCouponCode] = useState('')
+  const [couponDiscount, setCouponDiscount] = useState<number>(0)
+  const [couponMessage, setCouponMessage] = useState('')
+  const [couponValid, setCouponValid] = useState(false)
+  const [couponValidating, setCouponValidating] = useState(false)
 
   const isOwner = user && product && user.id === product.seller_id
   const canManage = isOwner || hasPermission('store.manage')
@@ -87,6 +93,10 @@ export default function ProductDetailPage() {
     setSubscribeError(null)
     setSelectedLeagueId('')
     setSelectedOptionId('')
+    setCouponCode('')
+    setCouponDiscount(0)
+    setCouponMessage('')
+    setCouponValid(false)
 
     try {
       const data = await participantService.getMyParticipations()
@@ -114,6 +124,7 @@ export default function ProductDetailPage() {
         product_id: id,
         league_id: selectedLeagueId,
         option_id: selectedOptionId || undefined,
+        coupon_code: couponValid && couponCode ? couponCode : undefined,
       })
 
       // Refresh access state
@@ -145,6 +156,26 @@ export default function ProductDetailPage() {
       setSubscribeError(message)
     } finally {
       setIsSubscribing(false)
+    }
+  }
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !id) return
+    setCouponValidating(true)
+    setCouponMessage('')
+    setCouponDiscount(0)
+    setCouponValid(false)
+    try {
+      const result = await couponService.validate(couponCode.trim(), id)
+      setCouponMessage(result.message)
+      if (result.valid) {
+        setCouponDiscount(result.discount_amount)
+        setCouponValid(true)
+      }
+    } catch {
+      setCouponMessage('쿠폰 검증에 실패했습니다')
+    } finally {
+      setCouponValidating(false)
     }
   }
 
@@ -496,17 +527,73 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
+              {/* Coupon Code */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-white mb-2">쿠폰 코드 (선택사항)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value)
+                      if (couponValid) {
+                        setCouponValid(false)
+                        setCouponDiscount(0)
+                        setCouponMessage('')
+                      }
+                    }}
+                    placeholder="쿠폰 코드 입력"
+                    className="flex-1 bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
+                  />
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={couponValidating || !couponCode.trim()}
+                    className="px-4 py-2.5 bg-carbon border border-neon/50 text-neon rounded-lg font-medium hover:bg-neon/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {couponValidating ? '확인 중...' : '적용'}
+                  </button>
+                </div>
+                {couponMessage && (
+                  <p className={`text-sm mt-1.5 ${couponValid ? 'text-profit' : 'text-loss'}`}>
+                    {couponMessage}
+                    {couponValid && couponDiscount > 0 && ` (-${formatPrice(couponDiscount)}원)`}
+                  </p>
+                )}
+              </div>
+
               {/* Total Price */}
               {selectedLeagueId && (
                 <div className="bg-carbon border border-steel rounded-lg p-4 mb-5">
+                  {couponValid && couponDiscount > 0 && (
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-text-secondary">상품 금액</span>
+                      <span className="text-text-secondary line-through">
+                        {formatPrice(
+                          product.price +
+                          (selectedOptionId
+                            ? (product.options?.find(o => o.id === selectedOptionId)?.additional_price || 0)
+                            : 0)
+                        )}원
+                      </span>
+                    </div>
+                  )}
+                  {couponValid && couponDiscount > 0 && (
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-profit">쿠폰 할인</span>
+                      <span className="text-profit">-{formatPrice(couponDiscount)}원</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-text-secondary">결제 금액</span>
                     <span className="text-neon font-bold text-lg">
                       {formatPrice(
-                        product.price +
-                        (selectedOptionId
-                          ? (product.options?.find(o => o.id === selectedOptionId)?.additional_price || 0)
-                          : 0)
+                        Math.max(0,
+                          product.price +
+                          (selectedOptionId
+                            ? (product.options?.find(o => o.id === selectedOptionId)?.additional_price || 0)
+                            : 0) -
+                          (couponValid ? couponDiscount : 0)
+                        )
                       )}원
                     </span>
                   </div>
