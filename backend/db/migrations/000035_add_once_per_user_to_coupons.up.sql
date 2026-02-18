@@ -1,0 +1,1 @@
+ALTER TABLE coupons ADD COLUMN once_per_user BOOLEAN NOT NULL DEFAULT false;

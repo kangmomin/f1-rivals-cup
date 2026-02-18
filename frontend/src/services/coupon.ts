@@ -8,6 +8,7 @@ export interface Coupon {
   discount_value: number
   max_uses: number
   used_count: number
+  once_per_user: boolean
   expires_at: string
   created_at: string
   product_name?: string
@@ -18,6 +19,7 @@ export interface CreateCouponRequest {
   discount_type: 'fixed' | 'percentage'
   discount_value: number
   max_uses: number
+  once_per_user: boolean
   expires_at: string
 }
 

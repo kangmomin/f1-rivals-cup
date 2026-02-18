@@ -14,6 +14,7 @@ type Coupon struct {
 	DiscountValue int64     `json:"discount_value"`
 	MaxUses       int       `json:"max_uses"`
 	UsedCount     int       `json:"used_count"`
+	OncePerUser   bool      `json:"once_per_user"`
 	ExpiresAt     time.Time `json:"expires_at"`
 	CreatedAt     time.Time `json:"created_at"`
 
@@ -27,6 +28,7 @@ type CreateCouponRequest struct {
 	DiscountType  string    `json:"discount_type" validate:"required,oneof=fixed percentage"`
 	DiscountValue int64     `json:"discount_value" validate:"required,min=1"`
 	MaxUses       int       `json:"max_uses" validate:"min=0"`
+	OncePerUser   bool      `json:"once_per_user"`
 	ExpiresAt     time.Time `json:"expires_at" validate:"required"`
 }
 

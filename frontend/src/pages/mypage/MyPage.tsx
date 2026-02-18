@@ -77,6 +77,7 @@ export default function MyPage() {
     discount_type: 'fixed',
     discount_value: 0,
     max_uses: 0,
+    once_per_user: false,
     expires_at: '',
   })
   const [couponCreating, setCouponCreating] = useState(false)
@@ -272,7 +273,7 @@ export default function MyPage() {
         expires_at: new Date(data.expires_at).toISOString(),
       })
       setShowCouponForm(false)
-      setCouponForm({ product_id: '', discount_type: 'fixed', discount_value: 0, max_uses: 0, expires_at: '' })
+      setCouponForm({ product_id: '', discount_type: 'fixed', discount_value: 0, max_uses: 0, once_per_user: false, expires_at: '' })
       // Refresh list
       const response = await couponService.listMy(couponsPage, 20)
       setCoupons(response.coupons)
@@ -827,6 +828,18 @@ export default function MyPage() {
                       className="w-full bg-carbon border border-steel rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-neon"
                     />
                   </div>
+                  <div className="flex items-center gap-3 pt-6">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={couponForm.once_per_user}
+                        onChange={(e) => setCouponForm({ ...couponForm, once_per_user: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-steel rounded-full peer peer-checked:bg-neon peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                    </label>
+                    <span className="text-sm font-medium text-text-secondary">1인 1회 사용</span>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">만료일</label>
                     <input
@@ -874,6 +887,7 @@ export default function MyPage() {
                           <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">상품명</th>
                           <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">할인</th>
                           <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">사용</th>
+                          <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">중복</th>
                           <th className="text-left text-sm font-medium text-text-secondary px-6 py-4">만료일</th>
                           <th className="text-right text-sm font-medium text-text-secondary px-6 py-4">관리</th>
                         </tr>
@@ -894,6 +908,11 @@ export default function MyPage() {
                             </td>
                             <td className="px-6 py-4 text-text-secondary">
                               {coupon.used_count}{coupon.max_uses > 0 ? ` / ${coupon.max_uses}` : ' / 무제한'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`text-xs px-2 py-1 rounded-full ${coupon.once_per_user ? 'bg-neon/10 text-neon border border-neon/30' : 'bg-steel/20 text-text-secondary border border-steel/30'}`}>
+                                {coupon.once_per_user ? '1회' : '무제한'}
+                              </span>
                             </td>
                             <td className="px-6 py-4 text-text-secondary text-sm">
                               <span className={new Date(coupon.expires_at) < new Date() ? 'text-loss' : ''}>

@@ -390,6 +390,22 @@ func (h *SubscriptionHandler) processSubscription(
 				Message: msg,
 			})
 		}
+		if coupon.OncePerUser {
+			used, err := h.couponRepo.HasUserUsedCoupon(reqCtx, coupon.ID, userID)
+			if err != nil {
+				slog.Error("Subscription: failed to check coupon usage", "error", err)
+				return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+					Error:   "server_error",
+					Message: "쿠폰 검증에 실패했습니다",
+				})
+			}
+			if used {
+				return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+					Error:   "invalid_coupon",
+					Message: "이미 사용한 쿠폰입니다",
+				})
+			}
+		}
 		discount := repository.CalculateDiscount(coupon, totalPrice)
 		totalPrice -= discount
 		if totalPrice < 0 {

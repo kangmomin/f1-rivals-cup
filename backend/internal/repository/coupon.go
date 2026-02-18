@@ -16,11 +16,12 @@ import (
 )
 
 var (
-	ErrCouponNotFound    = errors.New("coupon not found")
-	ErrCouponExpired     = errors.New("coupon expired")
-	ErrCouponMaxUsed     = errors.New("coupon max uses reached")
-	ErrCouponCodeExists  = errors.New("coupon code already exists for this product")
-	ErrCouponInvalid     = errors.New("invalid coupon")
+	ErrCouponNotFound       = errors.New("coupon not found")
+	ErrCouponExpired        = errors.New("coupon expired")
+	ErrCouponMaxUsed        = errors.New("coupon max uses reached")
+	ErrCouponAlreadyUsed    = errors.New("coupon already used by this user")
+	ErrCouponCodeExists     = errors.New("coupon code already exists for this product")
+	ErrCouponInvalid        = errors.New("invalid coupon")
 )
 
 type CouponRepository struct {
@@ -49,10 +50,10 @@ func (r *CouponRepository) Create(ctx context.Context, coupon *model.Coupon) err
 	coupon.Code = strings.ToUpper(coupon.Code)
 
 	err := r.db.Pool.QueryRowContext(ctx, `
-		INSERT INTO coupons (product_id, code, discount_type, discount_value, max_uses, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO coupons (product_id, code, discount_type, discount_value, max_uses, once_per_user, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at
-	`, coupon.ProductID, coupon.Code, coupon.DiscountType, coupon.DiscountValue, coupon.MaxUses, coupon.ExpiresAt).
+	`, coupon.ProductID, coupon.Code, coupon.DiscountType, coupon.DiscountValue, coupon.MaxUses, coupon.OncePerUser, coupon.ExpiresAt).
 		Scan(&coupon.ID, &coupon.CreatedAt)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
@@ -68,14 +69,14 @@ func (r *CouponRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Co
 	c := &model.Coupon{}
 	err := r.db.Pool.QueryRowContext(ctx, `
 		SELECT c.id, c.product_id, c.code, c.discount_type, c.discount_value,
-			c.max_uses, c.used_count, c.expires_at, c.created_at,
+			c.max_uses, c.used_count, c.once_per_user, c.expires_at, c.created_at,
 			p.name AS product_name
 		FROM coupons c
 		JOIN products p ON c.product_id = p.id
 		WHERE c.id = $1
 	`, id).Scan(
 		&c.ID, &c.ProductID, &c.Code, &c.DiscountType, &c.DiscountValue,
-		&c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.CreatedAt,
+		&c.MaxUses, &c.UsedCount, &c.OncePerUser, &c.ExpiresAt, &c.CreatedAt,
 		&c.ProductName,
 	)
 	if err != nil {
@@ -98,7 +99,7 @@ func (r *CouponRepository) ListByProduct(ctx context.Context, productID uuid.UUI
 
 	rows, err := r.db.Pool.QueryContext(ctx, `
 		SELECT c.id, c.product_id, c.code, c.discount_type, c.discount_value,
-			c.max_uses, c.used_count, c.expires_at, c.created_at,
+			c.max_uses, c.used_count, c.once_per_user, c.expires_at, c.created_at,
 			p.name AS product_name
 		FROM coupons c
 		JOIN products p ON c.product_id = p.id
@@ -116,7 +117,7 @@ func (r *CouponRepository) ListByProduct(ctx context.Context, productID uuid.UUI
 		c := &model.Coupon{}
 		if err := rows.Scan(
 			&c.ID, &c.ProductID, &c.Code, &c.DiscountType, &c.DiscountValue,
-			&c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.CreatedAt,
+			&c.MaxUses, &c.UsedCount, &c.OncePerUser, &c.ExpiresAt, &c.CreatedAt,
 			&c.ProductName,
 		); err != nil {
 			return nil, 0, err
@@ -140,7 +141,7 @@ func (r *CouponRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID,
 
 	rows, err := r.db.Pool.QueryContext(ctx, `
 		SELECT c.id, c.product_id, c.code, c.discount_type, c.discount_value,
-			c.max_uses, c.used_count, c.expires_at, c.created_at,
+			c.max_uses, c.used_count, c.once_per_user, c.expires_at, c.created_at,
 			p.name AS product_name
 		FROM coupons c
 		JOIN products p ON c.product_id = p.id
@@ -158,7 +159,7 @@ func (r *CouponRepository) ListBySeller(ctx context.Context, sellerID uuid.UUID,
 		c := &model.Coupon{}
 		if err := rows.Scan(
 			&c.ID, &c.ProductID, &c.Code, &c.DiscountType, &c.DiscountValue,
-			&c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.CreatedAt,
+			&c.MaxUses, &c.UsedCount, &c.OncePerUser, &c.ExpiresAt, &c.CreatedAt,
 			&c.ProductName,
 		); err != nil {
 			return nil, 0, err
@@ -189,12 +190,12 @@ func (r *CouponRepository) GetByCodeAndProduct(ctx context.Context, code string,
 	c := &model.Coupon{}
 	err := r.db.Pool.QueryRowContext(ctx, `
 		SELECT id, product_id, code, discount_type, discount_value,
-			max_uses, used_count, expires_at, created_at
+			max_uses, used_count, once_per_user, expires_at, created_at
 		FROM coupons
 		WHERE code = $1 AND product_id = $2
 	`, strings.ToUpper(code), productID).Scan(
 		&c.ID, &c.ProductID, &c.Code, &c.DiscountType, &c.DiscountValue,
-		&c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.CreatedAt,
+		&c.MaxUses, &c.UsedCount, &c.OncePerUser, &c.ExpiresAt, &c.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -229,6 +230,19 @@ func ValidateCoupon(coupon *model.Coupon) error {
 		return ErrCouponMaxUsed
 	}
 	return nil
+}
+
+// HasUserUsedCoupon checks if a user has already used a specific coupon.
+func (r *CouponRepository) HasUserUsedCoupon(ctx context.Context, couponID, userID uuid.UUID) (bool, error) {
+	var count int
+	err := r.db.Pool.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM coupon_usages
+		WHERE coupon_id = $1 AND user_id = $2
+	`, couponID, userID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // RecordUsage inserts a coupon_usage row and increments used_count within a transaction.

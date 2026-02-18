@@ -113,6 +113,7 @@ func (h *CouponHandler) Create(c echo.Context) error {
 		DiscountType:  req.DiscountType,
 		DiscountValue: req.DiscountValue,
 		MaxUses:       req.MaxUses,
+		OncePerUser:   req.OncePerUser,
 		ExpiresAt:     req.ExpiresAt,
 	}
 
@@ -365,6 +366,26 @@ func (h *CouponHandler) Validate(c echo.Context) error {
 			Valid:   false,
 			Message: msg,
 		})
+	}
+
+	// Check once_per_user restriction
+	if coupon.OncePerUser {
+		if userID, ok := c.Get("user_id").(uuid.UUID); ok {
+			used, err := h.couponRepo.HasUserUsedCoupon(ctx, coupon.ID, userID)
+			if err != nil {
+				slog.Error("Coupon.Validate: failed to check user usage", "error", err)
+				return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+					Error:   "server_error",
+					Message: "쿠폰 검증에 실패했습니다",
+				})
+			}
+			if used {
+				return c.JSON(http.StatusOK, model.ValidateCouponResponse{
+					Valid:   false,
+					Message: "이미 사용한 쿠폰입니다",
+				})
+			}
+		}
 	}
 
 	// Get product price for discount calculation
