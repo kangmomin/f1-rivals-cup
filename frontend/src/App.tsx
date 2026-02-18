@@ -30,7 +30,6 @@ import RoadmapPage from './pages/roadmap/RoadmapPage'
 import ShopPage from './pages/shop/ShopPage'
 import ProductDetailPage from './pages/shop/ProductDetailPage'
 import ProductEditorPage from './pages/shop/ProductEditorPage'
-import MyProductsPage from './pages/shop/MyProductsPage'
 import MyPage from './pages/mypage/MyPage'
 import TeamChangeRequestPage from './pages/leagues/TeamChangeRequestPage'
 
@@ -206,7 +205,6 @@ function MainLayout() {
           <Route path="/shop/:id" element={<ProductDetailPage />} />
           <Route path="/shop/:id/edit" element={<ProductEditorPage />} />
           <Route path="/mypage" element={<MyPage />} />
-          <Route path="/mypage/products" element={<MyProductsPage />} />
         </Routes>
       </div>
       <Footer />

@@ -302,6 +302,7 @@ func main() {
 	meGroup.GET("/participations", participantHandler.ListMyParticipations)
 	meGroup.GET("/products", productHandler.ListMy, custommiddleware.RequirePermission(auth.PermStoreCreate))
 	meGroup.GET("/subscriptions", subscriptionHandler.ListMy)
+	meGroup.GET("/orders", subscriptionHandler.ListMyOrders)
 	meGroup.GET("/sales", subscriptionHandler.ListSellerSales, custommiddleware.RequirePermission(auth.PermStoreCreate))
 
 	// Initialize and start schedulers

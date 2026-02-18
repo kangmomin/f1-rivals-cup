@@ -146,6 +146,59 @@ func (r *SubscriptionRepository) Subscribe(
 	return sub, nil
 }
 
+// GetAllByUser returns the user's subscriptions with optional status filter and pagination.
+func (r *SubscriptionRepository) GetAllByUser(ctx context.Context, userID uuid.UUID, status string, limit, offset int) ([]*model.Subscription, int, error) {
+	baseWhere := "WHERE s.user_id = $1"
+	args := []interface{}{userID}
+	if status != "" {
+		baseWhere += " AND s.status = $2"
+		args = append(args, status)
+	}
+
+	var total int
+	countQuery := "SELECT COUNT(*) FROM subscriptions s " + baseWhere
+	err := r.db.Pool.QueryRowContext(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT s.id, s.user_id, s.product_id, s.league_id, s.transaction_id, s.status,
+			s.started_at, s.expires_at, s.created_at,
+			p.name AS product_name, l.name AS league_name, p.price AS product_price
+		FROM subscriptions s
+		JOIN products p ON s.product_id = p.id
+		JOIN leagues l ON s.league_id = l.id
+		%s
+		ORDER BY s.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, baseWhere, len(args)+1, len(args)+2)
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Pool.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var subs []*model.Subscription
+	for rows.Next() {
+		s := &model.Subscription{}
+		var price int64
+		if err := rows.Scan(
+			&s.ID, &s.UserID, &s.ProductID, &s.LeagueID, &s.TransactionID, &s.Status,
+			&s.StartedAt, &s.ExpiresAt, &s.CreatedAt,
+			&s.ProductName, &s.LeagueName, &price,
+		); err != nil {
+			return nil, 0, err
+		}
+		s.ProductPrice = &price
+		subs = append(subs, s)
+	}
+
+	return subs, total, nil
+}
+
 // GetActiveByUser returns the user's active subscriptions with product and league names.
 func (r *SubscriptionRepository) GetActiveByUser(ctx context.Context, userID uuid.UUID) ([]*model.Subscription, error) {
 	query := `

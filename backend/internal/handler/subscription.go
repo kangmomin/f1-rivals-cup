@@ -143,6 +143,55 @@ func (h *SubscriptionHandler) ListMy(c echo.Context) error {
 	})
 }
 
+// ListMyOrders handles GET /api/v1/me/orders
+func (h *SubscriptionHandler) ListMyOrders(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, model.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "인증이 필요합니다",
+		})
+	}
+
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	status := c.QueryParam("status")
+
+	ctx := c.Request().Context()
+	offset := (page - 1) * limit
+
+	orders, total, err := h.subscriptionRepo.GetAllByUser(ctx, userID, status, limit, offset)
+	if err != nil {
+		slog.Error("Subscription.ListMyOrders: failed to list orders", "error", err, "user_id", userID)
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			Error:   "server_error",
+			Message: "주문 내역을 불러오는데 실패했습니다",
+		})
+	}
+
+	if orders == nil {
+		orders = []*model.Subscription{}
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"orders":      orders,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": totalPages,
+	})
+}
+
 // ListSellerSales handles GET /api/v1/me/sales
 func (h *SubscriptionHandler) ListSellerSales(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)

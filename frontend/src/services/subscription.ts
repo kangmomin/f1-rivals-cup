@@ -12,6 +12,7 @@ export interface Subscription {
   created_at: string
   product_name?: string
   league_name?: string
+  product_price?: number
 }
 
 export interface SubscribeRequest {
@@ -38,6 +39,14 @@ export interface SellerSalesResponse {
   total_pages: number
 }
 
+export interface OrdersResponse {
+  orders: Subscription[]
+  total: number
+  page: number
+  limit: number
+  total_pages: number
+}
+
 export const subscriptionService = {
   async subscribe(data: SubscribeRequest): Promise<Subscription> {
     const response = await api.post<Subscription>('/subscriptions', data)
@@ -53,6 +62,11 @@ export const subscriptionService = {
 
   async listMy(): Promise<{ subscriptions: Subscription[]; total: number }> {
     const response = await api.get<{ subscriptions: Subscription[]; total: number }>('/me/subscriptions')
+    return response.data
+  },
+
+  async listMyOrders(page = 1, limit = 20, status = ''): Promise<OrdersResponse> {
+    const response = await api.get<OrdersResponse>('/me/orders', { params: { page, limit, status: status || undefined } })
     return response.data
   },
 
